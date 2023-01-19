@@ -758,7 +758,7 @@ CONTAINS
     implicit none
     !
     !>   @param MY_FILES    list of files
-    !>   @param GL_METPROFILES  variables related to metrorological profiles
+    !>   @param GL_METPROFILES  variables related to meteorological profiles
     !>   @param MY_ERR      error handler
     !
     type(FILE_LIST),     intent(IN   ) :: MY_FILES
@@ -903,7 +903,7 @@ CONTAINS
   subroutine src_bcast_profiles(GL_METPROFILES, MY_ERR)
     implicit none
     !
-    !>   @param GL_METPROFILES  variables related to metrorological profiles
+    !>   @param GL_METPROFILES  variables related to meteorological profiles
     !>   @param MY_ERR      error handler
     !
     type(METEO_PROFILE), intent(INOUT) :: GL_METPROFILES
@@ -970,7 +970,7 @@ CONTAINS
     implicit none
     !
     !>   @param MY_ESP      list of parameters defining Eruption Source Parameters
-    !>   @param GL_METPROFILES  variables related to metrorological profiles
+    !>   @param GL_METPROFILES  variables related to meteorological profiles
     !>   @param MY_ERR      error handler
     !
     type(ESP_PARAMS),    intent(IN   ) :: MY_ESP
@@ -1006,8 +1006,8 @@ CONTAINS
     implicit none
     !
     !>   @param timesec           current time (s after 00UTC)
-    !>   @param GL_PLUMEPROF      variables related to metrorological profiles at current time
-    !>   @param GL_METPROFILES    variables related to metrorological profiles
+    !>   @param GL_PLUMEPROF      variables related to meteorological profiles at current time
+    !>   @param GL_METPROFILES    variables related to meteorological profiles
     !>   @param MY_ERR            error handler
     !
     real(rp),            intent(IN   ) :: timesec
@@ -1120,7 +1120,7 @@ CONTAINS
     implicit none
     !
     !>   @param MER_vs_h          parameterization to derive MER from h (NONE / ESTIMATE-MASTIN / ESTIMATE-WOODHOUSE)
-    !>   @param GL_PLUMEPROF      variables related to metrorological profiles at current time
+    !>   @param GL_PLUMEPROF      variables related to meteorological profiles at current time
     !>   @param HPlume            eruption column height (a.v.l.)
     !>   @param w0                water vapor mass fraction at vent
     !>   @param T0                mixture temperature       at vent
@@ -1307,7 +1307,7 @@ CONTAINS
     type(ERROR_STATUS),  intent(INOUT) :: MY_ERR
     !
     integer(ip)           :: nbins,np,is,ic
-    real(rp)              :: sum,deltaz,z,z2
+    real(rp)              :: msum,deltaz,z,z2
     real(rp), allocatable :: S(:)
     !
     !*** Initializations
@@ -1327,7 +1327,7 @@ CONTAINS
     !*** Vertical position and total mass according to Suzuki distribution
     !
     allocate(S(np))
-    sum    = 0.0_rp
+    msum    = 0.0_rp
     deltaz = Havl/np   ! from the ground to Havl
     do is = 1,np
        z            = is*deltaz
@@ -1335,12 +1335,16 @@ CONTAINS
        S(is)        = z2*exp(-As*z2)
        S(is)        = S(is)**Ls
        GL_SRC%z(is) = MY_ESP%zo + z   ! a.s.l.
-       sum          = sum + S(is)
+       msum         = msum + S(is)
     end do
     !
     !*** Normalization to MFR (SUMz=MFR)
     !
-    S(1:np) = M0*S(1:np)/sum
+    if(msum>0) then
+        S(1:np) = M0*S(1:np)/msum
+    else
+        S(1:np) = 0.0
+    end if
     !
     !*** Mass distribution
     !
@@ -1379,7 +1383,7 @@ CONTAINS
     type(SRC_PARAMS),    intent(INOUT) :: GL_SRC
     type(ERROR_STATUS),  intent(INOUT) :: MY_ERR
     !
-    integer(ip)           :: nbins,np,ip,ic
+    integer(ip)           :: nbins,np,is,ic
     real(rp)              :: deltaz
     real(rp), allocatable :: S(:)
     !
@@ -1401,9 +1405,9 @@ CONTAINS
     !
     allocate(S(np))
     deltaz = Th/(np-1)   ! from the hat bottom to Havl
-    do ip = 1,np
-       GL_SRC%z(ip) = MY_ESP%zo + Havl - Th + (ip-1)*deltaz  ! a.s.l.
-       S(ip) = 1.0_rp
+    do is = 1,np
+       GL_SRC%z(is) = MY_ESP%zo + Havl - Th + (is-1)*deltaz  ! a.s.l.
+       S(is) = 1.0_rp
     end do
     !
     !*** Normalization to MFR (SUMz=MFR)
@@ -1412,9 +1416,9 @@ CONTAINS
     !
     !*** Mass distribution
     !
-    do ip = 1,np
+    do is = 1,np
        do ic = 1,nbins
-          GL_SRC%M(ic,ip) = MY_GRN%bin_fc(ic)*S(ip)
+          GL_SRC%M(ic,is) = MY_GRN%bin_fc(ic)*S(is)
        end do
     end do
     !
@@ -1440,7 +1444,7 @@ CONTAINS
     !>   @param MY_PLUME      list of parameters defining the Plume Source Parameters
     !>   @param MY_GRN        list of parameters defining granulometry
     !>   @param MY_AGR        list of parameters defining an aggregation model
-    !>   @param GL_PLUMEPROF  variables related to metrorological profiles at current time
+    !>   @param GL_PLUMEPROF  variables related to meteorological profiles at current time
     !>   @param MY_MOD        model physics related parameters
     !>   @param GL_SRC        list of parameters defining a source term
     !>   @param MY_ERR        error handler
@@ -1715,7 +1719,7 @@ CONTAINS
     type(ERROR_STATUS),  intent(INOUT) :: MY_ERR
     !
     integer(ip)           :: lusrc
-    integer(ip)           :: np,nc,ic,ip,ibin
+    integer(ip)           :: np,nc,ic,is,ibin
     real(rp)              :: MFR,x,y,z
     real(rp), allocatable :: work(:)
     !
@@ -1751,16 +1755,16 @@ CONTAINS
     !*** Writes the rest of file
     !
     allocate(work(nc))
-    do ip = 1,np
-       x = GL_SRC%x(ip)
-       y = GL_SRC%y(ip)
-       z = GL_SRC%z(ip)      ! a.s.l.
+    do is = 1,np
+       x = GL_SRC%x(is)
+       y = GL_SRC%y(is)
+       z = GL_SRC%z(is)      ! a.s.l.
 
        ic = 0
        do ibin = 1,MY_GRN%nbins
           if(MY_GRN%bin_effe(ibin)) then
              ic = ic + 1
-             work(ic) = GL_SRC%M(ibin,ip)
+             work(ic) = GL_SRC%M(ibin,is)
           end if
        end do
        write(lusrc,20) x,y,z,(work(ic),ic=1,nc)

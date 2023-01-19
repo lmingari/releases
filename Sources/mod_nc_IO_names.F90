@@ -44,6 +44,7 @@
   character(len=16)  :: cuty_nc_name       = 'con_xz'
   character(len=16)  :: cutz_nc_name       = 'con_xy'
   character(len=16)  :: fl_nc_name         = 'fl'
+  character(len=16)  :: sur_nc_name        = 'con_surface'
   character(len=16)  :: col_nc_name        = 'col_mass'
   character(len=16)  :: clh_nc_name        = 'cloud_top'
   character(len=16)  :: pmc_nc_name        = 'col_mass_pm'
@@ -60,7 +61,7 @@
                                                     'Cs137_  ', &
                                                     'I131_   ', &
                                                     'Sr90_   ', &
-                                                    'Y90_    '/) 
+                                                    'Y90_    '/)
   !
   !*** Names of variables in dbs.nc file
   !
@@ -107,13 +108,13 @@
   !*** attribute names
   !
   character(len=48 )  :: attr_short
-  character(len=48 )  :: attr_units 
-  character(len=48 )  :: attr_units_vol 
-  character(len=48 )  :: attr_units_col 
+  character(len=48 )  :: attr_units
+  character(len=48 )  :: attr_units_vol
+  character(len=48 )  :: attr_units_col
   character(len=48 )  :: attr_units_grn
-  character(len=48 )  :: attr_axis 
+  character(len=48 )  :: attr_axis
   character(len=128)  :: attr_title        ! arnau remove (from rst file)
-  character(len=128)  :: attr_desc  
+  character(len=128)  :: attr_desc
   !
   character(len=16)  :: attr_conventions_name  = 'conventions'
   character(len=16)  :: attr_title_name        = 'title'

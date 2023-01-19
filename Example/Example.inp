@@ -12,7 +12,7 @@
  CODE
  ----
    !
-   VERSION 8.1
+   VERSION 8.2
    !
  --------
  TIME_UTC
@@ -25,6 +25,7 @@
    !    RUN_END_(HOURS_AFTER_00)            : value
    !    INITIAL_CONDITION           options : NONE / RESTART / INSERTION
    !    RESTART_FILE                        : path to the restart           file (only used if INITIAL_CONDITION = RESTART  )
+   !    RESTART_ROOT_PATH                   : Root path for restart. Only required for ensemble simulations. It looks for $RESTART_ROOT_PATH/0001/$RESTART_FILE, etc...
    !
    YEAR  = 2008
    MONTH = 04
@@ -33,6 +34,7 @@
    RUN_END_(HOURS_AFTER_00)   = 10
    INITIAL_CONDITION          = NONE
    RESTART_FILE               = Example-8.0.rst.nc
+   RESTART_ROOT_PATH          = ./
    !
  --------------
  INSERTION_DATA
@@ -73,8 +75,8 @@
  GRID
  ----
    !
-   !    HORIZONTAL_MAPPING options  : CARTESIAN / SPHERICAL / POLAR / MERCATOR
-   !    VERTICAL_MAPPING   options  : CARTESIAN / SIGMA_NO_DECAY / SIGMA_LINEAR_DECAY / SIGMA_EXPONENTIAL_DECAY
+   !    HORIZONTAL_MAPPING options  : CARTESIAN / SPHERICAL 
+   !    VERTICAL_MAPPING   options  : SIGMA_NO_DECAY / SIGMA_LINEAR_DECAY / SIGMA_EXPONENTIAL_DECAY
    !    LONMIN                      : value. Longitude of the grid W side in the range (-180,180)
    !    LONMAX                      : value. Longitude of the grid E side in the range (-180,180)
    !    LATMIN                      : value. Latitude  of the grid S side in the range ( -90,90 )
@@ -459,8 +461,9 @@ SOURCE
    !  CFL_SAFETY_FACTOR                              : value (default 0.9)
    !
    !  TERMINAL_VELOCITY_MODEL               options  : ARASTOOPOUR / GANSER / WILSON / DELLINO / PFEIFFER / DIOGUARDI2017 / DIOGUARDI2018
-   !  HORIZONTAL_TURBULENCE_MODEL           options  : CONSTANT = value / CMAQ
+   !  HORIZONTAL_TURBULENCE_MODEL           options  : CONSTANT = value / CMAQ / RAMS
    !  VERTICAL_TURBULENCE_MODEL             options  : CONSTANT = value / SIMILARITY
+   !  RAMS_CS                                        : value. Only used if HORIZONTAL_TURBULENCE_MODEL = RAMS 
    !  WET_DEPOSITION                        options  : YES/NO
    !  DRY_DEPOSITION                        options  : YES/NO
    !  GRAVITY_CURRENT                       options  : YES/NO. Activate GC  based on Suzuki & Koyaguchi (2009)
@@ -477,8 +480,9 @@ SOURCE
    CFL_SAFETY_FACTOR           = 0.9
    !
    TERMINAL_VELOCITY_MODEL     = GANSER
-   HORIZONTAL_TURBULENCE_MODEL CMAQ
+   HORIZONTAL_TURBULENCE_MODEL = CMAQ
    VERTICAL_TURBULENCE_MODEL   constant = 0.0 ! SIMILARITY
+   RAMS_CS                     = 0.2275
    WET_DEPOSITION              = no
    DRY_DEPOSITION              = no
    GRAVITY_CURRENT             = no
@@ -503,6 +507,7 @@ SOURCE
    !  OUTPUT_TIME_INTERVAL_(HOURS)                : value
    !  OUTPUT_3D_CONCENTRATION            options  : YES/NO. Outputs total concentration on sigma planes (summ over all bins of a given substance)
    !  OUTPUT_3D_CONCENTRATION_BINS       options  : YES/NO. Outputs bin   concentration on sigma planes (          all bins of a given substance)
+   !  OUTPUT_SURFACE_CONCENTRATION       options  : YES/NO. Outputs concentration at surface            (summ over all bins of a given substance)
    !  OUTPUT_COLUMN_LOAD                 options  : YES/NO. Outputs column  mass load                   (summ over all bins of a given substance)
    !  OUTPUT_CLOUD_TOP                   options  : YES/NO. Outputs cloud top heigh
    !  OUTPUT_GROUND_LOAD                 options  : YES/NO. Outputs deposit mass load                   (summ over all bins of a given substance)
@@ -523,6 +528,7 @@ SOURCE
    OUTPUT_TIME_INTERVAL_(HOURS)  = 1.
    OUTPUT_3D_CONCENTRATION       = no
    OUTPUT_3D_CONCENTRATION_BINS  = no
+   OUTPUT_SURFACE_CONCENTRATION  = yes
    OUTPUT_COLUMN_LOAD            = yes
    OUTPUT_CLOUD_TOP              = yes
    OUTPUT_GROUND_LOAD            = yes

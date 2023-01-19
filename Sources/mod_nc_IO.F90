@@ -21,6 +21,7 @@ MODULE nc_IO
   logical, PRIVATE :: PARALLEL_IO                     !< if .true. all tasks write netCDF; if .false. only Master writes netCDF
   logical, PRIVATE :: out_con_total                   !< if .true. outputs total concentration on sigma planes (sum over all bins of a given substance)
   logical, PRIVATE :: out_con_bins                    !< if .true. outputs bin   concentration on sigma planes (         all bins of a given substance)
+  logical, PRIVATE :: out_con_sur                     !< if .true. outputs concentration at surface            (sum over all bins of a given substance)
   logical, PRIVATE :: out_col_load                    !< if .true. outputs column  mass load                   (sum over all bins of a given substance)
   logical, PRIVATE :: out_cloud_top                   !< if .true. outputs cloud top height
   logical, PRIVATE :: out_grn_total                   !< if .true. outputs total deposit mass load             (sum over all bins of a given substance)
@@ -88,6 +89,7 @@ MODULE nc_IO
   integer(ip), PRIVATE  :: zs_ncID
   integer(ip), PRIVATE  :: con_ncID
   integer(ip), PRIVATE  :: con_bin_ncID
+  integer(ip), PRIVATE  :: sur_ncID
   integer(ip), PRIVATE  :: col_ncID
   integer(ip), PRIVATE  :: clh_ncID
   integer(ip), PRIVATE  :: fl_ncID
@@ -137,12 +139,12 @@ MODULE nc_IO
   PUBLIC :: nc_IO_read_rst
   PUBLIC :: nc_IO_out_grid_ensemble
   !
-  INTERFACE nc_IO_out_variable 
+  INTERFACE nc_IO_out_variable
      MODULE PROCEDURE nc_IO_out_variable_3d,nc_IO_out_variable_4d,nc_IO_out_variable_5d
   END INTERFACE nc_IO_out_variable
   PRIVATE :: nc_IO_out_variable_3d,nc_IO_out_variable_4d,nc_IO_out_variable_5d
   !
-  INTERFACE nc_IO_read_variable 
+  INTERFACE nc_IO_read_variable
      MODULE PROCEDURE nc_IO_read_variable_3d,nc_IO_read_variable_4d
   END INTERFACE nc_IO_read_variable
   PRIVATE :: nc_IO_read_variable_3d,nc_IO_read_variable_4d
@@ -269,6 +271,14 @@ CONTAINS
        MY_OUT%out_con_bins  = .true.
     else
        MY_OUT%out_con_bins  = .false.
+    end if
+    !
+    word = ''
+    call inpout_get_cha (file_inp, 'MODEL_OUTPUT','OUTPUT_SURFACE_CONCENTRATION',word, 1, MY_ERR, .true.)
+    if(TRIM(word).eq.'YES') then
+       MY_OUT%out_con_sur  = .true.
+    else
+       MY_OUT%out_con_sur  = .false.
     end if
     !
     word = ''
@@ -423,6 +433,7 @@ CONTAINS
     call parallel_bcast(MY_OUT%out_con_total  ,1,0)
     call parallel_bcast(MY_OUT%out_dbs_file   ,1,0)
     call parallel_bcast(MY_OUT%out_con_bins   ,1,0)
+    call parallel_bcast(MY_OUT%out_con_sur    ,1,0)
     call parallel_bcast(MY_OUT%out_col_load   ,1,0)
     call parallel_bcast(MY_OUT%out_cloud_top  ,1,0)
     call parallel_bcast(MY_OUT%out_grn_total  ,1,0)
@@ -2522,6 +2533,7 @@ CONTAINS
     PARALLEL_IO   = MY_OUT%PARALLEL_IO
     out_con_total = MY_OUT%out_con_total
     out_con_bins  = MY_OUT%out_con_bins
+    out_con_sur   = MY_OUT%out_con_sur
     out_col_load  = MY_OUT%out_col_load
     out_cloud_top = MY_OUT%out_cloud_top
     out_grn_total = MY_OUT%out_grn_total
@@ -2800,7 +2812,7 @@ CONTAINS
           select case(cat_code)
           case(CAT_PARTICLE,CAT_AEROSOL)
              !
-             attr_units_vol = 'g/m3'  
+             attr_units_vol = 'g/m3'
              if(spe_code.eq.SPE_SO2) then
                 attr_units_col = 'DU'
              else
@@ -2872,7 +2884,16 @@ CONTAINS
              istat = nf90_put_att(ncID, fl_ncID, attr_units_name,attr_units_vol)
           end if
           !
-          ! 7. COL_MASS
+          ! 7. CON_SUR
+          if(out_con_sur) then
+             attr_desc  = TRIM(sblock)//'concentration at surface'
+             name_nc    = TRIM(sblock)//TRIM(sur_nc_name)
+             istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), sur_ncID)
+             istat = nf90_put_att(ncID, sur_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, sur_ncID, attr_units_name,attr_units_vol)
+          end if
+          !
+          ! 8. COL_MASS
           if(out_col_load) then
              attr_desc  = TRIM(sblock)//'column mass load'
              name_nc    = TRIM(sblock)//TRIM(col_nc_name)
@@ -2881,7 +2902,7 @@ CONTAINS
              istat = nf90_put_att(ncID, col_ncID, attr_units_name,attr_units_col)
           end if
           !
-          ! 8. COL_MASS_PM
+          ! 9. COL_MASS_PM
           if(out_col_load.and.(cat_code.ne.CAT_AEROSOL)) then
              attr_desc  = TRIM(sblock)//'column mass load PM bins'
              name_nc    = TRIM(sblock)//TRIM(pmc_nc_name)
@@ -2890,7 +2911,7 @@ CONTAINS
              istat = nf90_put_att(ncID, pmc_ncID, attr_units_name,attr_units_col)
           end if
           !
-          ! 9. CLOUD_TOP
+          ! 10. CLOUD_TOP
           if(out_cloud_top) then
              attr_desc  = TRIM(sblock)//'cloud top height'
              attr_units = 'm (a.s.l.)'
@@ -2900,7 +2921,7 @@ CONTAINS
              istat = nf90_put_att(ncID, clh_ncID, attr_units_name,attr_units)
           end if
           !
-          !  10. GRN_LOAD
+          !  11. GRN_LOAD
           if(out_grn_total) then
              attr_desc  = TRIM(sblock)//'ground mass load'
              name_nc    = TRIM(sblock)//TRIM(grn_nc_name)
@@ -2909,7 +2930,7 @@ CONTAINS
              istat = nf90_put_att(ncID, grn_ncID, attr_units_name,attr_units_grn)
           end if
           !
-          !  11. GRN_LOAD_BIN
+          !  12. GRN_LOAD_BIN
           if(out_grn_bins) then
              attr_desc  = TRIM(sblock)//'ground mass load per bin'
              name_nc    = TRIM(sblock)//TRIM(grn_bin_nc_name)
@@ -2919,7 +2940,7 @@ CONTAINS
              istat = nf90_put_att(ncID, grn_bin_ncID, attr_units_name,attr_units_grn)
           end if
           !
-          !  12. WET_DEP
+          !  13. WET_DEP
           if(out_wet_total) then
              attr_desc  = TRIM(sblock)//'mass removed by wet deposition'
              name_nc    = TRIM(sblock)//TRIM(wet_nc_name)
@@ -3414,7 +3435,7 @@ CONTAINS
     !*** Get wet deposition at corner points (my_awetc in kg/m2)
     !
     allocate(my_awetc(my_ibs:my_ibe,my_jbs:my_jbe,1:nbins))
-    do ib = 1,nbins    
+    do ib = 1,nbins
        call Grid_p2c_2D(MY_TRA%my_awet(:,:,ib),my_awetc(:,:,ib))
     end do
     !
@@ -3600,7 +3621,65 @@ CONTAINS
         !
       end if   ! if(out_con_bin)
       !
-      !***  7. COL_MASS : compute and output specie column mass load in gr/m2  or DU at corner points
+      !***  7. CON_SUR : compute and output specie concentration at surface in gr/m3
+      !
+      if(out_con_sur) then
+         allocate(my_work2d(my_ibs:my_ibe,my_jbs:my_jbe))
+         my_work2d = 0.0_rp
+         if(my_kbs.eq.1) then
+            do ib = 1,nbins
+               if(bin_spe(ib).eq.spe_code) my_work2d(:,:) = my_work2d(:,:) + my_cc(:,:,my_kbs,ib)
+            end do
+         end if
+         !
+         call parallel_sum(my_work2d,COMM_GRIDZ)  ! only along z
+         !
+         if(PARALLEL_IO) then
+           !
+           my_nbx = my_ibe-my_ibs+1
+           my_nby = my_jbe-my_jbs+1
+           !
+           start3d=(/my_ibs,my_jbs,ipass/)
+           count3d=(/my_nbx,my_nby,1/)
+           !
+           allocate(gl_work2d(my_nbx,my_nby))
+           gl_work2d(1:my_nbx,1:my_nby) = my_work2d(my_ibs:my_ibe,my_jbs:my_jbe)
+           !
+           name_nc = TRIM(sblock)//TRIM(sur_nc_name)
+           istat = nf90_inq_varid(ncID,name_nc,sur_ncID)
+           istat = nf90_var_par_access(ncID, sur_ncID, access=NF90_COLLECTIVE)
+           istat = nf90_put_var(ncID, sur_ncID, gl_work2d, start=start3d,count=count3d)
+           !
+           deallocate(gl_work2d)
+           !
+         else   ! SERIAL_IO
+           !
+           if(master_model) then
+             allocate(gl_work2d(nbx,nby))
+             call domain_gather_corner_points_0halo_2D(gl_work2d,nbx,nby,my_work2d)
+           else
+             allocate(gl_work2d(1,1))
+             call domain_gather_corner_points_0halo_2D(gl_work2d,1,1,my_work2d)
+           end if
+           !
+           if(master_model) then
+             !
+             start3d=(/1,1,ipass/)
+             count3d=(/nbx,nby,1/)
+             !
+             name_nc = TRIM(sblock)//TRIM(sur_nc_name)
+             istat = nf90_inq_varid(ncID,name_nc,sur_ncID)
+             istat = nf90_put_var(ncID, sur_ncID, gl_work2d, start=start3d,count=count3d)
+             !
+           end if
+           deallocate(gl_work2d)
+         end if
+         !
+         deallocate(my_work2d)
+         !
+       end if ! if(out_con_sur)
+      !
+      !***  8. COL_MASS : compute and output specie column mass load in gr/m2  or DU at corner points
       !
       if(out_col_load) then
          !
@@ -3669,7 +3748,7 @@ CONTAINS
         !
        end if ! if(out_col_load)
        !
-       !***  8. COL_MASS_PM : compute and output specie PM column mass load in gr/m2 at corner points
+       !***  9. COL_MASS_PM : compute and output specie PM column mass load in gr/m2 at corner points
        !
        if(out_col_load.and.(cat_code.ne.CAT_AEROSOL)) then
          !
@@ -3746,7 +3825,7 @@ CONTAINS
         !
       end if !  if(out_col_load.and.(cat_code.ne.CAT_AEROSOL))
       !
-      !*** 9. CLOUD_TOP : compute and output species cloud top height (in m) assuming a concentration threshold of 50 ug/m3
+      !*** 10. CLOUD_TOP : compute and output species cloud top height (in m) assuming a concentration threshold of 50 ug/m3
       !
       if(out_cloud_top) then
        !
@@ -3827,7 +3906,7 @@ CONTAINS
         !
       end if ! if(out_cloud_top)
       !
-      !*** 10. GRN_LOAD : compute and output species total accumulation at ground (all species bins)
+      !*** 11. GRN_LOAD : compute and output species total accumulation at ground (all species bins)
       !
       if(out_grn_total) then
         !
@@ -3883,7 +3962,7 @@ CONTAINS
         !
       end if ! if(out_grn_load)
       !
-      !*** 11. GRN_LOAD_BIN : compute and output species bin accumulation at ground
+      !*** 12. GRN_LOAD_BIN : compute and output species bin accumulation at ground
       !
       if(out_grn_bins) then
         !
@@ -3947,7 +4026,7 @@ CONTAINS
        !
       end if ! if(out_grn_bin_load)
       !
-      !*** 12. WET : compute and output total species mass removed by wet deposition (all species bins)
+      !*** 13. WET : compute and output total species mass removed by wet deposition (all species bins)
       !
       if(out_wet_total) then
         !
@@ -4396,7 +4475,7 @@ CONTAINS
 12             format(&
                   '   (--)            (Bq/m2)      (mBq/m3)     (mBq/m3)     (mBq/m3)     (mBq/m3) ',/, &
                   '--------------------------------------------------------------------------------')
-               !              
+               !
              end select
           else
              open(90,file=TRIM(fname),status='old',position='append')
@@ -4808,8 +4887,8 @@ CONTAINS
     MY_ERR%source  = 'nc_IO_read_rst'
     MY_ERR%message = ' '
     !
-    call parallel_bcast(MY_FILES%file_rst  ,1,0)
-    nc_file     = MY_FILES%file_rst
+    call parallel_bcast(MY_FILES%file_rst_in ,1,0)
+    nc_file     = MY_FILES%file_rst_in
     PARALLEL_IO = MY_OUT%PARALLEL_IO
     !
     npx   = gl_npx
@@ -5172,7 +5251,7 @@ CONTAINS
        case(MAP_H_MERCATOR)
           istat = nf90_def_dim(ncID, x_nc_name, nbx , nx_ncID )
           istat = nf90_def_dim(ncID, y_nc_name, nby , ny_ncID )
-          ! 
+          !
        case default
           MY_ERR%flag    = 1
           MY_ERR%message = 'Incorrect horizontal mapping'
@@ -5229,7 +5308,7 @@ CONTAINS
           istat = nf90_put_att(ncID, lon_ncID, attr_cell_name,  MY_GRID%dlon)
           istat = nf90_put_att(ncID, lon_ncID, attr_projection_name,'spherical')
           istat = nf90_put_att(ncID, lon_ncID, attr_map_h_name, MY_GRID%map_h)
-          !    
+          !
           istat = nf90_def_var(ncID, lat_nc_name ,NF90_MYTYPE, (/ny_ncID/), lat_ncID)
           istat = nf90_put_att(ncID, lat_ncID, attr_long_name, 'latitude')
           istat = nf90_put_att(ncID, lat_ncID, attr_short_name,'latitude')
@@ -5262,7 +5341,7 @@ CONTAINS
           istat = nf90_put_att(ncID, th_con_ncID, attr_units_name,attr_units)
        end if
        !
-       if(MY_ENS%nth_col_mass.gt.0) then       
+       if(MY_ENS%nth_col_mass.gt.0) then
           attr_desc  = 'column mass theshold values for exceedance_probability'
           attr_units = 'g/m2'
           istat = nf90_def_var(ncID, th_col_mass_nc_name, NF90_FLOAT, (/nth_col_mass_ncID/), th_col_mass_ncID)
@@ -5270,7 +5349,7 @@ CONTAINS
           istat = nf90_put_att(ncID, th_col_mass_ncID, attr_units_name,attr_units)
        end if
        !
-       if(MY_ENS%nth_col_mass_DU.gt.0) then      
+       if(MY_ENS%nth_col_mass_DU.gt.0) then
           attr_desc  = 'column mass theshold values for exceedance_probability'
           attr_units = 'DU'
           istat = nf90_def_var(ncID, th_col_mass_DU_nc_name, NF90_FLOAT, (/nth_col_mass_DU_ncID/), th_col_mass_DU_ncID)
@@ -5278,7 +5357,7 @@ CONTAINS
           istat = nf90_put_att(ncID, th_col_mass_DU_ncID, attr_units_name,attr_units)
        end if
        !
-       if(MY_ENS%nth_grn_load.gt.0) then     
+       if(MY_ENS%nth_grn_load.gt.0) then
           attr_desc  = 'ground load theshold values for exceedance_probability'
           attr_units = 'kg/m2'
           istat = nf90_def_var(ncID, th_grn_load_nc_name, NF90_FLOAT, (/nth_grn_load_ncID/), th_grn_load_ncID)
@@ -5286,7 +5365,7 @@ CONTAINS
           istat = nf90_put_att(ncID, th_grn_load_ncID, attr_units_name,attr_units)
        end if
        !
-       if(MY_ENS%nval_per.gt.0) then     
+       if(MY_ENS%nval_per.gt.0) then
           attr_desc  = 'Probability of exceedence values (percentiles) for intensity_measure variables'
           attr_units = 'in %'
           istat = nf90_def_var(ncID, val_per_nc_name, NF90_FLOAT, (/nval_per_ncID/), val_per_ncID)
@@ -5396,13 +5475,13 @@ CONTAINS
                 attr_axis  = 'Y'
                 name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_prb_nc_name)
                 istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,th_con_ncID,nt_ncID/), ens_prb_ncID)
-                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_long_name, attr_desc)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_units_name,attr_units)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_axis_name, attr_axis)
              end if
              !
-             !  Intensity Measure 
+             !  Intensity Measure
              !
              if(MY_ENS%postprocess_percentiles.and.MY_ENS%nval_per.gt.0) then
                 attr_short = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_per_nc_name)
@@ -5411,7 +5490,7 @@ CONTAINS
                 attr_axis  = 'X'
                 name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_per_nc_name)
                 istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,nval_per_ncID,nt_ncID/), ens_per_ncID)
-                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_long_name, attr_desc)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_units_name,attr_units)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_axis_name, attr_axis)
@@ -5509,7 +5588,7 @@ CONTAINS
                 name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_prb_nc_name)
                 istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nth_col_mass_DU_ncID,nt_ncID/), &
                                      ens_prb_ncID)
-                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_long_name, attr_desc)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_units_name,attr_units)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_axis_name, attr_axis)
@@ -5522,14 +5601,14 @@ CONTAINS
                 name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_prb_nc_name)
                 istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nth_col_mass_ncID,nt_ncID/),&
                                      ens_prb_ncID)
-                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_long_name, attr_desc)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_units_name,attr_units)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_axis_name, attr_axis)
              end if
              end if
              !
-             !  Intensity Measure 
+             !  Intensity Measure
              !
              if(MY_ENS%postprocess_percentiles) then
              if( (spe_code.eq.SPE_SO2).and.(MY_ENS%nval_per.gt.0) ) then
@@ -5540,7 +5619,7 @@ CONTAINS
                 name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_per_nc_name)
                 istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nval_per_ncID,nt_ncID/), &
                                      ens_per_ncID)
-                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_long_name, attr_desc)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_units_name,attr_units)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_axis_name, attr_axis)
@@ -5553,7 +5632,7 @@ CONTAINS
                 name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_per_nc_name)
                 istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nval_per_ncID,nt_ncID/),&
                                      ens_per_ncID)
-                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_long_name, attr_desc)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_units_name,attr_units)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_axis_name, attr_axis)
@@ -5630,7 +5709,7 @@ CONTAINS
                 attr_axis  = 'Y'
                 name_nc    = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_prb_nc_name)
                 istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,th_grn_load_ncID,nt_ncID/),ens_prb_ncID)
-                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_long_name, attr_desc)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_units_name,attr_units)
                 istat = nf90_put_att(ncID, ens_prb_ncID, attr_axis_name, attr_axis)
@@ -5645,7 +5724,7 @@ CONTAINS
                 attr_axis  = 'X'
                 name_nc    = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_per_nc_name)
                 istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nval_per_ncID,nt_ncID/),ens_per_ncID)
-                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_long_name, attr_desc)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_units_name,attr_units)
                 istat = nf90_put_att(ncID, ens_per_ncID, attr_axis_name, attr_axis)
@@ -5676,7 +5755,7 @@ CONTAINS
        if(MY_ENS%nth_col_mass.gt.0) &
           istat = nf90_put_var(ncID, th_col_mass_ncID,MY_ENS%th_col_mass,start=(/1/),count=(/MY_ENS%nth_col_mass/))
        if(MY_ENS%nth_col_mass_DU.gt.0) &
-          istat = nf90_put_var(ncID, th_col_mass_DU_ncID,MY_ENS%th_col_mass_DU,start=(/1/),count=(/MY_ENS%nth_col_mass_DU/))            
+          istat = nf90_put_var(ncID, th_col_mass_DU_ncID,MY_ENS%th_col_mass_DU,start=(/1/),count=(/MY_ENS%nth_col_mass_DU/))
        if(MY_ENS%nth_grn_load.gt.0) &
           istat = nf90_put_var(ncID, th_grn_load_ncID,MY_ENS%th_grn_load,start=(/1/),count=(/MY_ENS%nth_grn_load/))
        if(MY_ENS%nval_per.gt.0) &
@@ -5700,7 +5779,7 @@ CONTAINS
                             iyr,imo,idy,ihr,imi,ise,MY_ENS%pp_timesec(it),MY_ERR)
           call time_dateformat(iyr,imo,idy,ihr,imi,ise,2_ip,out_date,MY_ERR)
           istat = nf90_put_var(ncID,date_ncID,out_date,start=(/1,it/))
-       end do   
+       end do
        !
        !*** Close the file
        !
@@ -5820,16 +5899,16 @@ CONTAINS
     !
     return
   end subroutine nc_IO_out_variable_5d
-  ! 
+  !
   subroutine nc_IO_read_variable_3d(file_name, var_name, var, n1, n2, n3, MY_ERR)
     implicit none
     !
     character(s_file),  intent(IN   ) :: file_name
     character(len=* ),  intent(IN   ) :: var_name
-    real(rp),           intent(INOUT) :: var(n1,n2,n3)
     integer(ip),        intent(IN   ) :: n1
     integer(ip),        intent(IN   ) :: n2
     integer(ip),        intent(IN   ) :: n3
+    real(rp),           intent(INOUT) :: var(n1,n2,n3)
     type(ERROR_STATUS), intent(INOUT) :: MY_ERR
     !
     integer(ip)  :: ncID,varID
@@ -5861,11 +5940,11 @@ CONTAINS
     !
     character(s_file),  intent(IN   ) :: file_name
     character(len=* ),  intent(IN   ) :: var_name
-    real(rp),           intent(INOUT) :: var(n1,n2,n3,n4)
     integer(ip),        intent(IN   ) :: n1
     integer(ip),        intent(IN   ) :: n2
     integer(ip),        intent(IN   ) :: n3
     integer(ip),        intent(IN   ) :: n4
+    real(rp),           intent(INOUT) :: var(n1,n2,n3,n4)
     type(ERROR_STATUS), intent(INOUT) :: MY_ERR
     !
     integer(ip)  :: ncID,varID
