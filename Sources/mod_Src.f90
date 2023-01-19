@@ -13,6 +13,7 @@ MODULE Src
   use Coord
   use PlumeBPT
   use Phys
+  use Ensemble
   implicit none
   save
   !
@@ -42,7 +43,7 @@ CONTAINS
   !>   @brief
   !>   Reads the SOURCE block from the input file (source parameters)
   !
-  subroutine src_read_inp_source_params(MY_FILES, MY_TIME, MY_SPE, MY_ESP, MY_PLUME, MY_ERR)
+  subroutine src_read_inp_source_params(MY_FILES, MY_TIME, MY_SPE, MY_ESP, MY_PLUME, MY_ENS, MY_ERR)
     implicit none
     !
     !>   @param MY_FILES  list of files
@@ -50,6 +51,7 @@ CONTAINS
     !>   @param MY_SPE    list of parameters defining species and categories
     !>   @param MY_ESP    list of parameters defining a Eruption Source Parameters
     !>   @param MY_PLUME  list of parameters defining the Plume Source Parameters
+    !>   @param MY_ENS    list of ensemble parameters
     !>   @param MY_ERR    error handler
     !
     type(FILE_LIST),      intent(IN   ) :: MY_FILES
@@ -57,6 +59,7 @@ CONTAINS
     type(SPECIES_PARAMS), intent(IN   ) :: MY_SPE
     type(ESP_PARAMS),     intent(INOUT) :: MY_ESP
     type(PLUME_PARAMS),   intent(INOUT) :: MY_PLUME
+    type(ENS_PARAMS),     intent(IN   ) :: MY_ENS
     type(ERROR_STATUS),   intent(INOUT) :: MY_ERR
     !
     integer(ip), parameter :: MAX_RVOID=1000
@@ -67,6 +70,7 @@ CONTAINS
     character(len=s_name)  :: cvoid
     character(len=24    )  :: time1_string,time2_string
     integer(ip)            :: ndt,idt,ndt0
+    integer(ip)            :: es_duration
     real(rp)               :: rvoid(MAX_RVOID)
     !
     !*** Initializations
@@ -144,7 +148,7 @@ CONTAINS
        call inpout_get_npar(file_inp, 'SOURCE','SOURCE_START_(HOURS_AFTER_00)', ndt, MY_ERR)
        if(MY_ERR%flag.ne.0) return
     else
-       if(file_ndt(1:1) /= '/') file_ndt = TRIM(MY_FILES%problempath)//'/'//TRIM(file_ndt)  ! If no absolute path, then prepend the directory name
+       if(file_ndt(1:1) /= '/') file_ndt = TRIM(MY_FILES%commonpath)//'/'//TRIM(file_ndt)  ! If no absolute path, then prepend the directory name
        call inpout_get_file_nrows(file_ndt,ndt,MY_ERR)  ! get ndt from file
        if(MY_ERR%flag.ne.0) return
     end if
@@ -200,6 +204,34 @@ CONTAINS
        MY_ESP%end_time(idt) = INT(rvoid(idt)*3600.0_rp)    ! h --> s
     end do
     !
+    !*** If necessary, perturbate source times
+    !
+    if(nens.gt.1) then
+       !
+       !*** Perturbate start/end time
+       !
+       do idt = 1, MY_ESP%ndt
+          !
+          es_duration            = MAX(MY_ESP%end_time(idt) - MY_ESP%start_time(idt), 0)
+          !
+          es_duration            = INT(ensemble_perturbate_variable( ID_SOURCE_DURATION, &
+                                         1.0_rp*es_duration, MY_ENS ))
+          !
+          MY_ESP%start_time(idt) = INT(ensemble_perturbate_variable( ID_SOURCE_START, &
+                                         1.0_rp*MY_ESP%start_time(idt), MY_ENS ))
+          !
+          MY_ESP%end_time(idt)   = MY_ESP%start_time(idt) + es_duration
+          !
+       end do
+       !
+       !*** Check for overlapping phases
+       !
+       do idt = 1, MY_ESP%ndt-1
+          MY_ESP%end_time(idt) = min(MY_ESP%end_time(idt),MY_ESP%start_time(idt+1))
+       end do
+       !
+    end if
+    !
     !*** Check consistency between multiple (>1) intervals
     !
     do idt = 2, MY_ESP%ndt
@@ -221,6 +253,13 @@ CONTAINS
        if(ndt0.lt.ndt) MY_ESP%h_dt(ndt0:ndt) = MY_ESP%h_dt(ndt0)
     else
        call inpout_get_file_col(file_ndt,3,MY_ESP%h_dt,MY_ESP%ndt,MY_ERR)  ! read third column
+    end if
+    !
+    !*** If necessary, perturbate column height in ensemble runs
+    !
+    if(nens.gt.1) then
+       MY_ESP%h_dt = ensemble_perturbate_variable( ID_COLUMN_HEIGHT, &
+                                                   MY_ESP%h_dt, MY_ENS )
     end if
     !
     !*** Reads source mass flow rate
@@ -295,6 +334,13 @@ CONTAINS
           if(MY_ERR%flag.ne.0) return
           if(ndt0.lt.ndt) MY_ESP%M0_dt(ndt0:ndt) = MY_ESP%M0_dt(ndt0)
           !
+          !*** If necessary, perturbate mass flow rate in ensemble runs. Note that this is not activated for PLUME or ESTIMATE options
+          !
+          if(nens.gt.1) then
+            MY_ESP%M0_dt = ensemble_perturbate_variable( ID_MASS_FLOW_RATE, &
+                                                         MY_ESP%M0_dt, MY_ENS )
+          end if
+          !
        end select
        !
     end if
@@ -358,6 +404,15 @@ CONTAINS
        if(MY_ERR%flag.ne.0) return
        if(ndt0.lt.ndt) MY_ESP%Ls_dt(ndt0:ndt) = MY_ESP%Ls_dt(ndt0)
        !
+       !*** If necessary, perturbate Suzuki parameters in ensemble runs
+       !
+       if(nens.gt.1) then
+          MY_ESP%As_dt = ensemble_perturbate_variable( ID_SUZUKI_A, &
+                                                       MY_ESP%As_dt, MY_ENS )
+          MY_ESP%Ls_dt = ensemble_perturbate_variable( ID_SUZUKI_L, &
+                                                       MY_ESP%Ls_dt, MY_ENS )
+       end if
+       !
     case('TOP-HAT')
        !
        call inpout_get_npar(file_inp, 'IF_TOP-HAT_SOURCE','THICKNESS_(M)', ndt0, MY_ERR)
@@ -366,6 +421,13 @@ CONTAINS
        call inpout_get_rea (file_inp, 'IF_TOP-HAT_SOURCE','THICKNESS_(M)', MY_ESP%Th_dt, ndt0, MY_ERR)
        if(MY_ERR%flag.ne.0) return
        if(ndt0.lt.ndt) MY_ESP%Th_dt(ndt0:ndt) = MY_ESP%Th_dt(ndt0)
+       !
+       !*** If necessary, perturbate Top-hat parameters in ensemble runs
+       !
+       if(nens.gt.1) then
+          MY_ESP%Th_dt = ensemble_perturbate_variable( ID_TOP_HAT_THICKNESS, &
+                                                       MY_ESP%Th_dt, MY_ENS )
+       end if
        !
     case('PLUME')
        !
@@ -610,7 +672,7 @@ CONTAINS
     !
     !*** Memory allocation
     !
-    if(.not.master) then
+    if(.not.master_model) then
        allocate(MY_ESP%start_time(MY_ESP%ndt))
        allocate(MY_ESP%end_time  (MY_ESP%ndt))
        allocate(MY_ESP%h_dt      (MY_ESP%ndt))
@@ -662,7 +724,7 @@ CONTAINS
        call parallel_bcast(MY_PLUME%a_s_plume      ,1,0)
        call parallel_bcast(MY_PLUME%a_v            ,1,0)
        !
-       if(.not.master) then
+       if(.not.master_model) then
           allocate(MY_PLUME%u0_dt(MY_PLUME%ndt))
           allocate(MY_PLUME%Tv_dt(MY_PLUME%ndt))
           allocate(MY_PLUME%Tl_dt(MY_PLUME%ndt))
@@ -713,7 +775,6 @@ CONTAINS
     real(rp)              :: param(nwormax)
     integer(ip)           :: nword, npar
     integer(ip)           :: nt,nz,it,iz
-    integer(ip)           :: iyr,imo,idy,ihr,imi,ise
     !
     !*** Initializations
     !
@@ -765,7 +826,12 @@ CONTAINS
           !
           if(words(2).eq.'time') then
              it = it + 1
-             GL_METPROFILES%time(it) = param(1)
+             GL_METPROFILES%time(it) = DATETIME( nint(param(1), kind=ip), &
+                                                 nint(param(2), kind=ip), &
+                                                 nint(param(3), kind=ip), &
+                                                 nint(param(4), kind=ip), &
+                                                 nint(param(5), kind=ip), &
+                                                 nint(param(6), kind=ip)  )
           else if(words(2).eq.'timesec') then
              GL_METPROFILES%timesec(it) = param(1)
           else if(words(2).eq.'lon') then
@@ -794,11 +860,21 @@ CONTAINS
     !
     !*** Write to log file
     !
-    call time_real_to_date(iyr,imo,idy,ihr,imi,ise,GL_METPROFILES%time(1),MY_ERR)
-    call time_dateformat  (iyr,imo,idy,ihr,imi,ise,3_ip,time1_string,MY_ERR)
+    call time_dateformat(GL_METPROFILES%time(1)%year,   &
+                         GL_METPROFILES%time(1)%month,  &
+                         GL_METPROFILES%time(1)%day,    &
+                         GL_METPROFILES%time(1)%hour,   &
+                         GL_METPROFILES%time(1)%minute, &
+                         GL_METPROFILES%time(1)%second, &
+                         3_ip,time1_string,MY_ERR)
     !
-    call time_real_to_date(iyr,imo,idy,ihr,imi,ise,GL_METPROFILES%time(GL_METPROFILES%nt),MY_ERR)
-    call time_dateformat  (iyr,imo,idy,ihr,imi,ise,3_ip,time2_string,MY_ERR)
+    call time_dateformat(GL_METPROFILES%time(GL_METPROFILES%nt)%year,   &
+                         GL_METPROFILES%time(GL_METPROFILES%nt)%month,  &
+                         GL_METPROFILES%time(GL_METPROFILES%nt)%day,    &
+                         GL_METPROFILES%time(GL_METPROFILES%nt)%hour,   &
+                         GL_METPROFILES%time(GL_METPROFILES%nt)%minute, &
+                         GL_METPROFILES%time(GL_METPROFILES%nt)%second, &
+                         3_ip,time2_string,MY_ERR)
     !
     write(MY_FILES%lulog,30) time1_string,time2_string
 30  format('  METEO (PROFILES) TIME RANGE',/,&
@@ -848,7 +924,7 @@ CONTAINS
     !
     !*** Memory allocation
     !
-    if(.not.master) then
+    if(.not.master_model) then
        allocate(GL_METPROFILES%time   (GL_METPROFILES%nt              ))
        allocate(GL_METPROFILES%timesec(GL_METPROFILES%nt              ))
        allocate(GL_METPROFILES%zavl   (GL_METPROFILES%nz,GL_METPROFILES%nt))
@@ -862,8 +938,14 @@ CONTAINS
        allocate(GL_METPROFILES%rho    (GL_METPROFILES%nz,GL_METPROFILES%nt))
     end if
     !
-    call parallel_bcast(GL_METPROFILES%time,   GL_METPROFILES%nt,              0)
-    call parallel_bcast(GL_METPROFILES%timesec,GL_METPROFILES%nt,              0)
+    call parallel_bcast(GL_METPROFILES%time%year,   GL_METPROFILES%nt,0)
+    call parallel_bcast(GL_METPROFILES%time%month,  GL_METPROFILES%nt,0)
+    call parallel_bcast(GL_METPROFILES%time%day,    GL_METPROFILES%nt,0)
+    call parallel_bcast(GL_METPROFILES%time%hour,   GL_METPROFILES%nt,0)
+    call parallel_bcast(GL_METPROFILES%time%minute, GL_METPROFILES%nt,0)
+    call parallel_bcast(GL_METPROFILES%time%second, GL_METPROFILES%nt,0)
+    call parallel_bcast(GL_METPROFILES%timesec,     GL_METPROFILES%nt,0)
+
     call parallel_bcast(GL_METPROFILES%zavl,   GL_METPROFILES%nz*GL_METPROFILES%nt,0)
     call parallel_bcast(GL_METPROFILES%p,      GL_METPROFILES%nz*GL_METPROFILES%nt,0)
     call parallel_bcast(GL_METPROFILES%t,      GL_METPROFILES%nz*GL_METPROFILES%nt,0)
@@ -891,14 +973,9 @@ CONTAINS
     !>   @param GL_METPROFILES  variables related to metrorological profiles
     !>   @param MY_ERR      error handler
     !
-    type(ESP_PARAMS),    intent(INOUT) :: MY_ESP
+    type(ESP_PARAMS),    intent(IN   ) :: MY_ESP
     type(METEO_PROFILE), intent(IN   ) :: GL_METPROFILES
     type(ERROR_STATUS),  intent(INOUT) :: MY_ERR
-    !
-    logical     :: found
-    integer(ip) :: iyr,imo,idy,ihr,imi,ise
-    integer(ip) :: iyr2,imo2,idy2,ihr2,imi2,ise2
-    real(rp)    :: time1,time2
     !
     !*** Initializations
     !
@@ -908,46 +985,12 @@ CONTAINS
     !
     !*** Check time consistency
     !
-    call time_addtime(MY_ESP%start_year,MY_ESP%start_month,MY_ESP%start_day,0_ip,  &
-         iyr,imo,idy,ihr,imi,ise,1.0_rp*MY_ESP%start_time(1),MY_ERR)
-    call time_date_to_real(iyr,imo,idy,ihr,imi,ise,time1,MY_ERR)      ! convert to YYYYMMDDHHMMSS
-    if(GL_METPROFILES%time(1).gt.time1) then
+    if(GL_METPROFILES%timesec(1).gt.MY_ESP%start_time(1) .or. &
+       GL_METPROFILES%timesec(GL_METPROFILES%nt).lt.MY_ESP%end_time(MY_ESP%ndt) ) then
        MY_ERR%flag    = 1
        MY_ERR%message = 'Inconsistency between time range and profiles'
        return
     end if
-    !
-    call time_addtime(MY_ESP%start_year,MY_ESP%start_month,MY_ESP%start_day,0_ip,  &
-         iyr,imo,idy,ihr,imi,ise,1.0_rp*MY_ESP%end_time(MY_ESP%ndt),MY_ERR)
-    call time_date_to_real(iyr,imo,idy,ihr,imi,ise,time2,MY_ERR)      ! convert to YYYYMMDDHHMMSS
-    if(GL_METPROFILES%time(GL_METPROFILES%nt).lt.time2) then
-       MY_ERR%flag    = 1
-       MY_ERR%message = 'Inconsistency between time range and profiles'
-       return
-    end if
-    !
-    !*** Calculates time lag by iteration (that is, the time in seconds between the origin of
-    !*** profiles and ESP). Both origins are referred to 0000UTC, but may belong to different days
-    !
-    found = .false.
-    MY_ESP%profile_time_lag = 0.0_rp
-    call time_real_to_date(iyr,imo,idy,ihr,imi,ise,GL_METPROFILES%time(1),MY_ERR)
-    !
-    do while(.not.found)
-       call time_addtime(iyr, imo, idy, 0, &
-            iyr2,imo2,idy2,ihr2,imi2,ise2,MY_ESP%profile_time_lag,MY_ERR)
-       !
-       if((iyr.eq.iyr2).and.(imo.eq.imo2).and.(idy.eq.idy2)) then
-          found = .true.
-       else
-          MY_ESP%profile_time_lag = MY_ESP%profile_time_lag + 86400.0_rp
-       end if
-       if(MY_ESP%profile_time_lag.gt.GL_METPROFILES%timesec(GL_METPROFILES%nt)) then
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Profile time lag not found. Check interval consistency '
-          return
-       end if
-    end do
     !
     return
   end subroutine src_check_profiles
@@ -1058,6 +1101,8 @@ CONTAINS
        end if
        !
        GL_PLUMEPROF%Nair(iz,1) = GI*GI*(1+CA0*dTdz/GI)/(CA0*GL_PLUMEPROF%t(1,1))
+       !LAM: quick fix for negative Nair. To be reviewed!
+       if(GL_PLUMEPROF%Nair(iz,1).lt.0) GL_PLUMEPROF%Nair(iz,1) = 0.0
        !
     end do
     !
@@ -1140,9 +1185,14 @@ CONTAINS
        !
        !*** Estimates fW as in Degruyter and Bonadonna (2012)
        !
-       W  = v_mean/(N_mean*H1)
-       fW = ((z1**4.0_rp)*beta*beta*W)/((2.0_rp**2.5_rp)*6.0_rp*alfa*alfa)
-       fW = 1.0_rp + fW
+       !LAM: check it
+       if(N_mean.gt.0.0) then
+           W  = v_mean/(N_mean*H1)
+           fW = ((z1**4.0_rp)*beta*beta*W)/((2.0_rp**2.5_rp)*6.0_rp*alfa*alfa)
+           fW = 1.0_rp + fW
+       else
+           fW = 0.0
+       end if
        !
     case('ESTIMATE-WOODHOUSE')
        !
@@ -1159,9 +1209,13 @@ CONTAINS
        b  = 1.09_rp + 0.32_rp*beta/alfa
        c  = 0.06_rp + 0.03_rp*beta/alfa
        !
-       W  = 1.44_rp*V1/(N_mean*H1)
-       fW = (1.0_rp+b*W+c*W*W) /(1.0_rp+a*W)
-       fW = fW**4.0_rp
+       if(N_mean.gt.0.0) then
+           W  = 1.44_rp*V1/(N_mean*H1)
+           fW = (1.0_rp+b*W+c*W*W) /(1.0_rp+a*W)
+           fW = fW**4.0_rp
+       else
+           fW = 0.0
+       end if
        !
     case default
        !
@@ -1252,8 +1306,8 @@ CONTAINS
     type(SRC_PARAMS),    intent(INOUT) :: GL_SRC
     type(ERROR_STATUS),  intent(INOUT) :: MY_ERR
     !
-    integer(ip)           :: nbins,np,ip,ic
-    real(rp)              :: sum,deltaz,z
+    integer(ip)           :: nbins,np,is,ic
+    real(rp)              :: sum,deltaz,z,z2
     real(rp), allocatable :: S(:)
     !
     !*** Initializations
@@ -1275,11 +1329,13 @@ CONTAINS
     allocate(S(np))
     sum    = 0.0_rp
     deltaz = Havl/np   ! from the ground to Havl
-    do ip = 1,np
-       z            = ip*deltaz
-       S(ip)        = ((1.0_rp-z/Havl)*exp(As*(z/Havl-1.0_rp)))**Ls
-       GL_SRC%z(ip) = MY_ESP%zo + z   ! a.s.l.
-       sum          = sum + S(ip)
+    do is = 1,np
+       z            = is*deltaz
+       z2           = max(1.0_rp-z/Havl,0.0_rp)
+       S(is)        = z2*exp(-As*z2)
+       S(is)        = S(is)**Ls
+       GL_SRC%z(is) = MY_ESP%zo + z   ! a.s.l.
+       sum          = sum + S(is)
     end do
     !
     !*** Normalization to MFR (SUMz=MFR)
@@ -1288,9 +1344,9 @@ CONTAINS
     !
     !*** Mass distribution
     !
-    do ip = 1,np
+    do is = 1,np
        do ic = 1,nbins
-          GL_SRC%M(ic,ip) = MY_GRN%bin_fc(ic)*S(ip)
+          GL_SRC%M(ic,is) = MY_GRN%bin_fc(ic)*S(is)
        end do
     end do
     !
@@ -1617,7 +1673,7 @@ CONTAINS
     !
     !*** Writes plume results for this time slab
     !
-    if(master) call plumeBPT_write_plumeprop(&
+    if(master_model) call plumeBPT_write_plumeprop(&
          MY_FILES,MY_TIME,MY_PLUME,MY_ESP,MY_GRN,MY_AGR,MY_MOD,MY_ERR)
     call parallel_bcast(MY_ERR%flag,1,0)
     if(MY_ERR%flag.ne.0) call task_runend(TASK_SET_SRC, MY_FILES, MY_ERR)
@@ -1859,17 +1915,19 @@ CONTAINS
     !
     !*** Memory allocation
     !
-    if(.not.master) then
-       allocate(GL_SRC%x(np))
-       allocate(GL_SRC%y(np))
-       allocate(GL_SRC%z(np))
-       allocate(GL_SRC%M(nbins,np))
+    if(GL_SRC%np.gt.0) then
+      if(.not.master_model) then
+         allocate(GL_SRC%x(np))
+         allocate(GL_SRC%y(np))
+         allocate(GL_SRC%z(np))
+         allocate(GL_SRC%M(nbins,np))
+      end if
+      !
+      call parallel_bcast(GL_SRC%x,np      ,0)
+      call parallel_bcast(GL_SRC%y,np      ,0)
+      call parallel_bcast(GL_SRC%z,np      ,0)
+      call parallel_bcast(GL_SRC%M,nbins*np,0)
     end if
-    !
-    call parallel_bcast(GL_SRC%x,np      ,0)
-    call parallel_bcast(GL_SRC%y,np      ,0)
-    call parallel_bcast(GL_SRC%z,np      ,0)
-    call parallel_bcast(GL_SRC%M,nbins*np,0)
     !
     return
   end subroutine src_bcast_source

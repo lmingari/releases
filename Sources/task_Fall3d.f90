@@ -22,6 +22,7 @@ subroutine task_Fall3d
   use F3D
   use Dbs
   use Sat
+  use Ensemble
   implicit none
   !
   logical  :: sourcetime,meteotime
@@ -36,7 +37,7 @@ subroutine task_Fall3d
   !
   !*** Master opens log file
   !
-  if(master) call inpout_open_log_file(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
+  if(master_model) call inpout_open_log_file(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
   call parallel_bcast(MY_ERR%flag,1_ip,0_ip)
   if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
   !
@@ -48,7 +49,7 @@ subroutine task_Fall3d
      !
   else
      !
-     if(master) call grn_read_inp_species(MY_FILES, MY_SPE, MY_ERR)
+     if(master_model) call grn_read_inp_species(MY_FILES, MY_SPE, MY_ERR)
      call parallel_bcast(MY_ERR%flag,1_ip,0_ip)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
@@ -63,7 +64,7 @@ subroutine task_Fall3d
      !
   else
      !
-     if(master) call time_read_inp_time(MY_FILES, MY_TIME, MY_ERR)
+     if(master_model) call time_read_inp_time(MY_FILES, MY_TIME, MY_ERR)
      call parallel_bcast(MY_ERR%flag,1,0)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
@@ -78,7 +79,7 @@ subroutine task_Fall3d
      !
   else
      !
-     if(master) call dbs_read_inp_meteo(MY_FILES, MY_TIME, MY_MET, GL_METPROFILES, MY_ERR)
+     if(master_model) call dbs_read_inp_meteo(MY_FILES, MY_TIME, MY_MET, GL_METPROFILES, MY_ERR)
      call parallel_bcast(MY_ERR%flag,1,0)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
@@ -93,7 +94,7 @@ subroutine task_Fall3d
      !
   else
      !
-     if(master) call grid_read_inp_grid(MY_FILES, MY_GRID, MY_ERR)
+     if(master_model) call grid_read_inp_grid(MY_FILES, MY_GRID, MY_ERR)
      call parallel_bcast(MY_ERR%flag,1,0)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
@@ -108,7 +109,7 @@ subroutine task_Fall3d
      !
   else
      !
-     if(master) call phys_read_inp_model(MY_FILES, MY_MOD, MY_ERR)
+     if(master_model) call phys_read_inp_model(MY_FILES, MY_MOD, MY_ERR)
      call parallel_bcast(MY_ERR%flag,1,0)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
@@ -123,7 +124,7 @@ subroutine task_Fall3d
      !
   else
      !
-     if(master) call grn_read_inp_aggregation(MY_FILES, MY_AGR, MY_ERR)
+     if(master_model) call grn_read_inp_aggregation(MY_FILES, MY_AGR, MY_ENS, MY_ERR)
      call parallel_bcast(MY_ERR%flag,1,0)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
@@ -138,7 +139,7 @@ subroutine task_Fall3d
      !
   else
      !
-     if(master) call nc_IO_read_inp_output(MY_FILES, MY_OUT, MY_ERR)
+     if(master_model) call nc_IO_read_inp_output(MY_FILES, MY_OUT, MY_ERR)
      call parallel_bcast(MY_ERR%flag,1,0)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
@@ -183,6 +184,16 @@ subroutine task_Fall3d
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
   end if
   !
+  !*** If necessary, perturbate wind components in ensemble runs
+  !
+  if(nens.gt.1) then
+      MY_MET%my_uc  =  ensemble_perturbate_variable( ID_U_WIND, MY_MET%my_uc,  MY_ENS )
+      MY_MET%my_u10 =  ensemble_perturbate_variable( ID_U_WIND, MY_MET%my_u10, MY_ENS )
+      !
+      MY_MET%my_vc  =  ensemble_perturbate_variable( ID_V_WIND, MY_MET%my_vc,  MY_ENS )
+      MY_MET%my_v10 =  ensemble_perturbate_variable( ID_V_WIND, MY_MET%my_v10, MY_ENS )
+  end if
+  !
   !*** Get the effective granulometry (effective bins)
   !
   if(TASK_FLAG(TASK_SET_SRC).eq.1) then
@@ -191,7 +202,7 @@ subroutine task_Fall3d
      !
   else
      !
-     if(master) call grn_read_effective_granulometry(MY_FILES, MY_MOD, MY_TRA, MY_ERR)
+     if(master_model) call grn_read_effective_granulometry(MY_FILES, MY_MOD, MY_TRA, MY_ERR)
      call parallel_bcast(MY_ERR%flag,1,0)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
@@ -211,7 +222,7 @@ subroutine task_Fall3d
   allocate(MY_TRA%my_s   (my_ips   :my_ipe   ,my_jps   :my_jpe   ,my_kps   :my_kpe   ,1:MY_TRA%nbins))
   allocate(MY_TRA%my_vs  (my_ips   :my_ipe   ,my_jps   :my_jpe   ,my_kbs_1h:my_kbe_1h,1:MY_TRA%nbins))
   allocate(MY_TRA%my_acum(my_ips_2h:my_ipe_2h,my_jps_2h:my_jpe_2h                    ,1:MY_TRA%nbins))
-  allocate(MY_TRA%my_awet(my_ips_2h:my_ipe_2h,my_jps_2h:my_jpe_2h                                   ))
+  allocate(MY_TRA%my_awet(my_ips_2h:my_ipe_2h,my_jps_2h:my_jpe_2h                    ,1:MY_TRA%nbins))
   !
   !*** Set the initial condition
   !
@@ -219,24 +230,24 @@ subroutine task_Fall3d
      call nc_IO_read_rst(MY_FILES,MY_GRID,MY_TRA,MY_OUT,MY_TIME,MY_ERR)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
-     MY_TRA%my_awet(:,:    ) = 0.0_rp
+     MY_TRA%my_awet(:,:,:  ) = 0.0_rp
      !
   else if(MY_TIME%insertion) then
-     call sat_set_initial_condition(MY_FILES,MY_TIME,MY_GRID,MY_TRA,MY_ERR)
+     call sat_set_initial_condition(MY_FILES,MY_TIME,MY_GRID,MY_TRA,MY_ENS,MY_ERR)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
      !
      MY_TRA%my_acum(:,:,:  ) = 0.0_rp
-     MY_TRA%my_awet(:,:    ) = 0.0_rp
+     MY_TRA%my_awet(:,:,:  ) = 0.0_rp
   else
      MY_TRA%my_c   (:,:,:,:) = 0.0_rp
      MY_TRA%my_acum(:,:,:  ) = 0.0_rp
-     MY_TRA%my_awet(:,:    ) = 0.0_rp
+     MY_TRA%my_awet(:,:,:  ) = 0.0_rp
   end if
   !
   !*** Master writes input data to the log file
   !
   if(MY_OUT%log_level.ge.LOG_LEVEL_NORMAL) then
-     if(master) call F3D_write_data(MY_FILES,MY_TIME,MY_GRID,MY_MOD,MY_TRA,MY_OUT,MY_ERR)
+     if(master_model) call F3D_write_data(MY_FILES,MY_TIME,MY_GRID,MY_MOD,MY_TRA,MY_OUT,MY_ERR)
      call parallel_bcast(MY_ERR%flag,1,0)
      if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
   end if
@@ -311,7 +322,7 @@ subroutine task_Fall3d
   !
   !*** Normal end
   !
-  if(master) call inpout_close_log_file(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
+  if(master_model) call inpout_close_log_file(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
   call parallel_bcast(MY_ERR%flag,1_ip,0_ip)
   if(MY_ERR%flag.ne.0) call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
   !

@@ -7,6 +7,7 @@
 !**********************************************************************
 MODULE nc_IO
   use KindType
+  use nc_IO_names
   use netcdf
   use Domain
   use Grid
@@ -17,7 +18,7 @@ MODULE nc_IO
   !
   !    LIST OF PRIVATE VARIABLES
   !
-  logical, PRIVATE :: PARALLEL_IO                     !< if .true. all tasks write netCDF; if .false. only master writes netCDF
+  logical, PRIVATE :: PARALLEL_IO                     !< if .true. all tasks write netCDF; if .false. only Master writes netCDF
   logical, PRIVATE :: out_con_total                   !< if .true. outputs total concentration on sigma planes (sum over all bins of a given substance)
   logical, PRIVATE :: out_con_bins                    !< if .true. outputs bin   concentration on sigma planes (         all bins of a given substance)
   logical, PRIVATE :: out_col_load                    !< if .true. outputs column  mass load                   (sum over all bins of a given substance)
@@ -28,78 +29,6 @@ MODULE nc_IO
   !
   integer(ip), PRIVATE :: NF90_MYTYPE = NF90_FLOAT    ! NF90_FLOAT / NF90_DOUBLE. Note that NF90_FLOAT halves output file size but leads to an
   !                                                     inconsistency in variable values (5th decimal digit) between tasks
-  character(len=16), PRIVATE :: x_nc_name       = 'x'
-  character(len=16), PRIVATE :: y_nc_name       = 'y'
-  character(len=16), PRIVATE :: z_nc_name       = 'z'
-  character(len=16), PRIVATE :: lon_nc_name     = 'lon'
-  character(len=16), PRIVATE :: lat_nc_name     = 'lat'
-  character(len=16), PRIVATE :: sig_nc_name     = 'sigma'
-  character(len=16), PRIVATE :: bin_nc_name     = 'bin'
-  character(len=16), PRIVATE :: bin_spe_nc_name = 'bin'  ! specie bin; prefix SPE_TAG added later
-  character(len=16), PRIVATE :: xcut_nc_name    = 'xcut'
-  character(len=16), PRIVATE :: ycut_nc_name    = 'ycut'
-  character(len=16), PRIVATE :: zcut_nc_name    = 'zcut'
-  character(len=16), PRIVATE :: zflcut_nc_name  = 'fl'
-  character(len=16), PRIVATE :: npm_nc_name     = 'pm_bin'
-  character(len=16), PRIVATE :: str_nc_name     = 'strlen'
-  character(len=16), PRIVATE :: tim_nc_name     = 'time'
-  !
-  character(len=16), PRIVATE :: date_nc_name       = 'date'
-  character(len=16), PRIVATE :: h_nc_name          = 'z_grn'
-  character(len=16), PRIVATE :: zs_nc_name         = 'z_sigma'
-  character(len=16), PRIVATE :: c_total_nc_name    = 'con'
-  character(len=16), PRIVATE :: c_bin_nc_name      = 'con_bin'
-  character(len=16), PRIVATE :: cutx_nc_name       = 'con_yz'
-  character(len=16), PRIVATE :: cuty_nc_name       = 'con_xz'
-  character(len=16), PRIVATE :: cutz_nc_name       = 'con_xy'
-  character(len=16), PRIVATE :: fl_nc_name         = 'fl'
-  character(len=16), PRIVATE :: col_nc_name        = 'col_mass'
-  character(len=16), PRIVATE :: clh_nc_name        = 'cloud_top'
-  character(len=16), PRIVATE :: pmc_nc_name        = 'col_mass_pm'
-  character(len=16), PRIVATE :: grn_nc_name        = 'grn_load'
-  character(len=16), PRIVATE :: grn_bin_nc_name    = 'grn_load_bin'
-  character(len=16), PRIVATE :: wet_nc_name        = 'wet_dep'
-  !
-  character(len=8), dimension(nspe_max) :: SPE_TAG = &
-                                                 (/ 'tephra_ ', &
-                                                    'dust_   ', &
-                                                    'H2O_    ', &
-                                                    'SO2_    ', &
-                                                    'Cs134_  ', &
-                                                    'Cs137_  ', &
-                                                    'I131_   ', &
-                                                    'Sr90_   ', &
-                                                    'Y90_    '/)
-  !
-  character(len=16), PRIVATE :: lmask_nc_name      = 'lmask'
-  character(len=16), PRIVATE :: luse_nc_name       = 'luse'
-  character(len=16), PRIVATE :: z0_nc_name         = 'z0'
-  character(len=16), PRIVATE :: pblh_nc_name       = 'pblh'
-  character(len=16), PRIVATE :: ust_nc_name        = 'ust'
-  character(len=16), PRIVATE :: smoi_nc_name       = 'smoi'
-  character(len=16), PRIVATE :: prec_nc_name       = 'prec'
-  character(len=16), PRIVATE :: u10_nc_name        = 'u10'
-  character(len=16), PRIVATE :: v10_nc_name        = 'v10'
-  character(len=16), PRIVATE :: t2_nc_name         = 't2'
-  character(len=16), PRIVATE :: mon_nc_name        = 'mon'
-  character(len=16), PRIVATE :: p_nc_name          = 'p'
-  character(len=16), PRIVATE :: t_nc_name          = 't'
-  character(len=16), PRIVATE :: tp_nc_name         = 'tp'
-  character(len=16), PRIVATE :: tv_nc_name         = 'tv'
-  character(len=16), PRIVATE :: u_nc_name          = 'u'
-  character(len=16), PRIVATE :: v_nc_name          = 'v'
-  character(len=16), PRIVATE :: w_nc_name          = 'w'
-  character(len=16), PRIVATE :: qv_nc_name         = 'qv'
-  character(len=16), PRIVATE :: rho_nc_name        = 'rho'
-  !
-  character(len=16), PRIVATE :: nx_nc_name   = 'nx'
-  character(len=16), PRIVATE :: ny_nc_name   = 'ny'
-  character(len=16), PRIVATE :: nz_nc_name   = 'nz'
-  character(len=16), PRIVATE :: nx2_nc_name  = 'nx_2h'
-  character(len=16), PRIVATE :: ny2_nc_name  = 'ny_2h'
-  character(len=16), PRIVATE :: nz2_nc_name  = 'nz_2h'
-  character(len=16), PRIVATE :: nb_nc_name   = 'nbins'
-
   integer(ip), PRIVATE  :: ncID
   !                                      dimensions
   integer(ip), PRIVATE  :: nx_ncID
@@ -118,7 +47,21 @@ MODULE nc_IO
   integer(ip), PRIVATE  :: npm_ncID
   integer(ip), PRIVATE  :: nstr_ncID
   integer(ip), PRIVATE  :: nt_ncID
-  !                                     coordinate variables
+  integer(ip), PRIVATE  :: nens_ncID
+  !
+  integer(ip), PRIVATE  :: nth_con_ncID
+  integer(ip), PRIVATE  :: nth_col_mass_ncID
+  integer(ip), PRIVATE  :: nth_col_mass_DU_ncID
+  integer(ip), PRIVATE  :: nth_grn_load_ncID
+  integer(ip), PRIVATE  :: nval_per_ncID
+  !
+  integer(ip), PRIVATE  :: ens_mean_ncID
+  integer(ip), PRIVATE  :: ens_logmean_ncID
+  integer(ip), PRIVATE  :: ens_std_ncID
+  integer(ip), PRIVATE  :: ens_median_ncID
+  integer(ip), PRIVATE  :: ens_prb_ncID
+  integer(ip), PRIVATE  :: ens_per_ncID
+  !                                      coordinate variables
   integer(ip), PRIVATE  :: lon_ncID
   integer(ip), PRIVATE  :: lat_ncID
   integer(ip), PRIVATE  :: z_ncID
@@ -131,6 +74,14 @@ MODULE nc_IO
   integer(ip), PRIVATE  :: zflcut_ncID
   integer(ip), PRIVATE  :: pm_ncID
   integer(ip), PRIVATE  :: tim_ncID
+  integer(ip), PRIVATE  :: ens_ncID
+  !
+  integer(ip), PRIVATE  :: th_con_ncID
+  integer(ip), PRIVATE  :: th_col_mass_ncID
+  integer(ip), PRIVATE  :: th_col_mass_DU_ncID
+  integer(ip), PRIVATE  :: th_grn_load_ncID
+  integer(ip), PRIVATE  :: val_per_ncID
+  !
   !                                     other variables
   integer(ip), PRIVATE  :: date_ncID
   integer(ip), PRIVATE  :: h_ncID
@@ -168,33 +119,6 @@ MODULE nc_IO
   integer(ip), PRIVATE  :: w_ncID
   integer(ip), PRIVATE  :: qv_ncID
   integer(ip), PRIVATE  :: rho_ncID
-  !                                           attributes
-  character(len=48 ), PRIVATE :: attr_units
-  character(len=128), PRIVATE :: attr_title
-  character(len=128), PRIVATE :: attr_desc
-  !
-  character(len=16), PRIVATE :: attr_year_name         = 'YEAR'
-  character(len=16), PRIVATE :: attr_month_name        = 'MONTH'
-  character(len=16), PRIVATE :: attr_day_name          = 'DAY'
-  character(len=16), PRIVATE :: attr_dbs_start_name    = 'START_TIME'
-  character(len=16), PRIVATE :: attr_dbs_end_name      = 'END_TIME'
-  character(len=16), PRIVATE :: attr_run_start_name    = 'RUN_START_TIME'
-  character(len=16), PRIVATE :: attr_run_end_name      = 'RUN_END_TIME'
-  character(len=16), PRIVATE :: attr_run_time_name     = 'CURRENT_TIME'
-  character(len=16), PRIVATE :: attr_mass_ground_name  = 'MASS_GROUND'
-  character(len=16), PRIVATE :: attr_mass_lateral_name = 'MASS_LATERAL'
-  character(len=16), PRIVATE :: attr_mass_sink_name    = 'MASS_SINK'
-  character(len=16), PRIVATE :: attr_mass_in_name      = 'MASS_INJECTED'
-  !
-  character(len=16), PRIVATE :: attr_lonmin_name     = 'LONMIN'
-  character(len=16), PRIVATE :: attr_lonmax_name     = 'LONMAX'
-  character(len=16), PRIVATE :: attr_latmin_name     = 'LATMIN'
-  character(len=16), PRIVATE :: attr_latmax_name     = 'LATMAX'
-  character(len=16), PRIVATE :: attr_dlon_name       = 'DLON'
-  character(len=16), PRIVATE :: attr_dlat_name       = 'DLAT'
-  character(len=16), PRIVATE :: attr_maph_name       = 'MAP_H'
-  character(len=16), PRIVATE :: attr_mapv_name       = 'MAP_V'
-  character(len=16), PRIVATE :: attr_ztop_name       = 'ZTOP'
   !
   integer(ip),PRIVATE, parameter :: npm = 4                                                ! number of PM
   real(rp),   PRIVATE            :: pm_value(npm) = (/2.5_rp,10.0_rp,20.0_rp,64.0_rp/)     ! PM values (in microns)
@@ -211,6 +135,17 @@ MODULE nc_IO
   PUBLIC :: nc_IO_out_pts
   PUBLIC :: nc_IO_out_rst
   PUBLIC :: nc_IO_read_rst
+  PUBLIC :: nc_IO_out_grid_ensemble
+  !
+  INTERFACE nc_IO_out_variable 
+     MODULE PROCEDURE nc_IO_out_variable_3d,nc_IO_out_variable_4d,nc_IO_out_variable_5d
+  END INTERFACE nc_IO_out_variable
+  PRIVATE :: nc_IO_out_variable_3d,nc_IO_out_variable_4d,nc_IO_out_variable_5d
+  !
+  INTERFACE nc_IO_read_variable 
+     MODULE PROCEDURE nc_IO_read_variable_3d,nc_IO_read_variable_4d
+  END INTERFACE nc_IO_read_variable
+  PRIVATE :: nc_IO_read_variable_3d,nc_IO_read_variable_4d
   !
 CONTAINS
   !
@@ -251,6 +186,7 @@ CONTAINS
        return
     elseif(file_version < MIN_REQUIRED_VERSION) then
        MY_ERR%flag    = 1
+       MY_ERR%source  = 'nc_IO_read_inp_output'
        MY_ERR%message = 'Input file version deprecated. Please use 8.x file version'
        return
     end if
@@ -506,7 +442,7 @@ CONTAINS
     ncutz = MY_OUT%MY_CUTS%ncutz
     nfl   = MY_OUT%MY_CUTS%nfl
     !
-    if(.not.master) then
+    if(.not.master_model) then
        if(ncutx.gt.0) allocate(MY_OUT%MY_CUTS%x_cut  (ncutx))
        if(ncuty.gt.0) allocate(MY_OUT%MY_CUTS%y_cut  (ncuty))
        if(ncutz.gt.0) allocate(MY_OUT%MY_CUTS%z_cut  (ncutz))
@@ -524,7 +460,7 @@ CONTAINS
     call parallel_bcast(MY_OUT%MY_PTS%npts  ,1,0)
     !
     if(MY_OUT%MY_PTS%npts.gt.0) then
-       if(.not.master) then
+       if(.not.master_model) then
           allocate(MY_OUT%MY_PTS%name_pts(MY_OUT%MY_PTS%npts))
           allocate(MY_OUT%MY_PTS%xpts    (MY_OUT%MY_PTS%npts))
           allocate(MY_OUT%MY_PTS%ypts    (MY_OUT%MY_PTS%npts))
@@ -593,11 +529,15 @@ CONTAINS
     !
 #if defined WITH_MPI
     if(PARALLEL_IO) then
-       mode_flag = IOR(NF90_NETCDF4, NF90_CLASSIC_MODEL)
-       mode_flag = IOR(mode_flag, NF90_MPIIO)
-       mode_flag = IOR(mode_flag, NF90_NOWRITE)
-       istat     = nf90_open_par(TRIM(nc_file), mode_flag , comm=COMM_WORLD, info = MPI_INFO_NULL, ncid=ncID)
-    else if(master) then
+       ! Setting NF90_NETCDF4 is not necessary (or allowed).
+       ! The file type is detected automatically.
+       mode_flag = IOR(NF90_NOWRITE, NF90_MPIIO)
+       istat     = nf90_open_par(TRIM(nc_file),         &
+                                 cmode = mode_flag,     &
+                                 comm  = COMM_MODEL,    &
+                                 info  = MPI_INFO_NULL, &
+                                 ncid  = ncID)
+    else if(master_model) then
        mode_flag = NF90_NOWRITE
        istat = nf90_open(TRIM(nc_file), mode_flag, ncID)
     end if
@@ -605,11 +545,19 @@ CONTAINS
     mode_flag = NF90_NOWRITE
     istat = nf90_open(TRIM(nc_file), mode_flag, ncID)
 #endif
-
+    !
+    !*** Check errors opening file
+    !
+    if(.not.PARALLEL_IO) call parallel_bcast(istat,1,0)
+    if(istat.ne.nf90_noerr) then
+        MY_ERR%flag    = istat
+        MY_ERR%message = nf90_strerror(istat)
+        return
+    end if
     !
     !*** Master checks dimensions
     !
-    if(master) then
+    if(master_model) then
        istat = nf90_inq_dimid        (ncID, lon_nc_name, nx_ncID)
        istat = nf90_inquire_dimension(ncID, nx_ncID, dim_name, ival)
        if(ival.ne.nbx) MY_ERR%flag = 1
@@ -620,7 +568,7 @@ CONTAINS
        return
     end if
     !
-    if(master) then
+    if(master_model) then
        istat = nf90_inq_dimid        (ncID, lat_nc_name, ny_ncID)
        istat = nf90_inquire_dimension(ncID, ny_ncID, dim_name, ival)
        if(ival.ne.nby) MY_ERR%flag = 1
@@ -631,7 +579,7 @@ CONTAINS
        return
     end if
     !
-    if(master) then
+    if(master_model) then
        istat = nf90_inq_dimid        (ncID, sig_nc_name, ns_ncID)
        istat = nf90_inquire_dimension(ncID, ns_ncID, dim_name, ival)
        if(ival.ne.nbz) MY_ERR%flag = 1
@@ -645,11 +593,13 @@ CONTAINS
     !*** Checks consistency in MY_TIME variables
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_year_name, ival)
+       istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+       istat = nf90_get_att  (ncID,tim_ncID, attr_year_name, ival)
        if(ival.ne.MY_TIME%start_year) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_year_name, ival)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+          istat = nf90_get_att  (ncID,tim_ncID, attr_year_name, ival)
           if(ival.ne.MY_TIME%start_year) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
@@ -660,11 +610,13 @@ CONTAINS
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_month_name, ival)
+       istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+       istat = nf90_get_att(ncID, tim_ncID, attr_month_name, ival)
        if(ival.ne.MY_TIME%start_month) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_month_name, ival)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+          istat = nf90_get_att(ncID, tim_ncID, attr_month_name, ival)
           if(ival.ne.MY_TIME%start_month) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
@@ -675,11 +627,13 @@ CONTAINS
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_day_name, ival)
+       istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+       istat = nf90_get_att(ncID, tim_ncID, attr_day_name, ival)
        if(ival.ne.MY_TIME%start_day) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_day_name, ival)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+          istat = nf90_get_att(ncID, tim_ncID, attr_day_name, ival)
           if(ival.ne.MY_TIME%start_day) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
@@ -690,11 +644,13 @@ CONTAINS
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_dbs_start_name, rval)
+       istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+       istat = nf90_get_att(ncID,tim_ncID, attr_dbs_start_name, rval)
        if(rval.ne.MY_TIME%dbs_start) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_dbs_start_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+          istat = nf90_get_att(ncID, tim_ncID, attr_dbs_start_name, rval)
           if(rval.ne.MY_TIME%dbs_start) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
@@ -706,11 +662,13 @@ CONTAINS
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_dbs_end_name, rval)
+       istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+       istat = nf90_get_att(ncID, tim_ncID, attr_dbs_end_name, rval)
        if(rval.ne.MY_TIME%dbs_end) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_dbs_end_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
+          istat = nf90_get_att(ncID, tim_ncID, attr_dbs_end_name, rval)
           if(rval.ne.MY_TIME%dbs_end) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
@@ -738,143 +696,161 @@ CONTAINS
     !*** Checks consistency in MY_GRID variables
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_lonmin_name, rval)
+       istat = nf90_inq_varid(ncID,lon_nc_name,lon_ncID)
+       istat = nf90_get_att(ncID, lon_ncID, attr_min_name, rval)
        if(rval.ne.MY_GRID%lonmin) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_lonmin_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,lon_nc_name,lon_ncID)
+          istat = nf90_get_att(ncID, lon_ncID, attr_min_name, rval)
           if(rval.ne.MY_GRID%lonmin) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_lonmin_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for lonmin between input and dbs files'
        return
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_lonmax_name, rval)
+       istat = nf90_inq_varid(ncID,lon_nc_name,lon_ncID)
+       istat = nf90_get_att(ncID, lon_ncID, attr_max_name, rval)
        if(rval.ne.MY_GRID%lonmax) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_lonmax_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,lon_nc_name,lon_ncID)
+          istat = nf90_get_att(ncID, lon_ncID, attr_max_name, rval)
           if(rval.ne.MY_GRID%lonmax) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_lonmax_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for lonmax between input and dbs files'
        return
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_latmin_name, rval)
+       istat = nf90_inq_varid(ncID,lat_nc_name,lat_ncID)
+       istat = nf90_get_att(ncID, lat_ncID, attr_min_name, rval)
        if(rval.ne.MY_GRID%latmin) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_latmin_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,lat_nc_name,lat_ncID)
+          istat = nf90_get_att(ncID, lat_ncID, attr_min_name, rval)
           if(rval.ne.MY_GRID%latmin) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_latmin_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for latmin between input and dbs files'
        return
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_latmax_name, rval)
+       istat = nf90_inq_varid(ncID,lat_nc_name,lat_ncID)
+       istat = nf90_get_att(ncID, lat_ncID, attr_max_name, rval)
        if(rval.ne.MY_GRID%latmax) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_latmax_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,lat_nc_name,lat_ncID)
+          istat = nf90_get_att(ncID, lat_ncID, attr_max_name, rval)
           if(rval.ne.MY_GRID%latmax) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_latmax_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for latmax between input and dbs files'
        return
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_dlon_name, rval)
+       istat = nf90_inq_varid(ncID,lon_nc_name,lon_ncID)
+       istat = nf90_get_att(ncID, lon_ncID, attr_cell_name, rval)
        if(rval.ne.MY_GRID%dlon) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_dlon_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,lon_nc_name,lon_ncID)
+          istat = nf90_get_att(ncID, lon_ncID, attr_cell_name, rval)
           if(rval.ne.MY_GRID%dlon) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_dlon_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for lon increment between input and dbs files'
        return
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_dlat_name, rval)
+       istat = nf90_inq_varid(ncID,lat_nc_name,lat_ncID)
+       istat = nf90_get_att(ncID, lat_ncID, attr_cell_name, rval)
        if(rval.ne.MY_GRID%dlat) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_dlat_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,lat_nc_name,lat_ncID)
+          istat = nf90_get_att(ncID, lat_ncID, attr_cell_name, rval)
           if(rval.ne.MY_GRID%dlat) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_dlat_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for lat increment between input and dbs files'
        return
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_mapv_name, ival)
+       istat = nf90_inq_varid(ncID,sig_nc_name,sig_ncID)
+       istat = nf90_get_att(ncID, sig_ncID, attr_map_v_name, ival)
        if(ival.ne.MY_GRID%map_v) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_mapv_name, ival)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,sig_nc_name,sig_ncID)
+          istat = nf90_get_att(ncID, sig_ncID, attr_map_v_name, ival)
           if(ival.ne.MY_GRID%map_v) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_mapv_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for vertical mapping between input and dbs files'
        return
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_maph_name, ival)
+       istat = nf90_inq_varid(ncID,lat_nc_name,lat_ncID)
+       istat = nf90_get_att(ncID, lat_ncID, attr_map_h_name, ival)
        if(ival.ne.MY_GRID%map_h) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_maph_name, ival)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,lat_nc_name,lat_ncID)
+          istat = nf90_get_att(ncID, lat_ncID, attr_map_h_name, ival)
           if(ival.ne.MY_GRID%map_h) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_maph_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for horizontal mapping between input and dbs files'
        return
     end if
     !
     if(PARALLEL_IO) then
-       istat = nf90_get_att(ncID, NF90_GLOBAL, attr_ztop_name, rval)
+       istat = nf90_inq_varid(ncID,sig_nc_name,sig_ncID)
+       istat = nf90_get_att(ncID, sig_ncID, attr_ztop_name, rval)
        if(rval.ne.MY_GRID%X3max) MY_ERR%flag = 1
     else
-       if(master) then
-          istat = nf90_get_att(ncID, NF90_GLOBAL, attr_ztop_name, rval)
+       if(master_model) then
+          istat = nf90_inq_varid(ncID,sig_nc_name,sig_ncID)
+          istat = nf90_get_att(ncID, sig_ncID, attr_ztop_name, rval)
           if(rval.ne.MY_GRID%X3max) MY_ERR%flag = 1
        end if
        call parallel_bcast(MY_ERR%flag,1,0)
     end if
     if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Inconsistent values for '//TRIM(attr_ztop_name)//' between input and dbs files'
+       MY_ERR%message = 'Inconsistent values for ztop between input and dbs files'
        return
     end if
     !
     !*** Check sigma values
     !
-    if(master) then
+    if(master_model) then
        allocate(work1d(nbz))
        istat = nf90_inq_varid(ncID, sig_nc_name,sig_ncID)
        istat = nf90_get_var  (ncID, sig_ncID, work1d, start=(/1/),count=(/nbz/))
@@ -896,11 +872,12 @@ CONTAINS
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
        istat = nf90_inq_varid(ncID, h_nc_name,h_ncID)
+       istat = nf90_var_par_access(ncID,h_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, h_ncID, my_hc,start=start2d,count=count2d)
        !
     else
        allocate(work2d(nbx,nby))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, h_nc_name,h_ncID)
           istat = nf90_get_var  (ncID, h_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
        end if
@@ -956,11 +933,15 @@ CONTAINS
     !
 #if defined WITH_MPI
     if(PARALLEL_IO) then
-       mode_flag = IOR(NF90_NETCDF4, NF90_CLASSIC_MODEL)
-       mode_flag = IOR(mode_flag, NF90_MPIIO)
-       mode_flag = IOR(mode_flag, NF90_NOWRITE)
-       istat     = nf90_open_par(TRIM(nc_file), mode_flag , comm=COMM_WORLD, info = MPI_INFO_NULL, ncid=ncID)
-    else if(master) then
+       ! Setting NF90_NETCDF4 is not necessary (or allowed).
+       ! The file type is detected automatically.
+       mode_flag = IOR(NF90_NOWRITE, NF90_MPIIO)
+       istat     = nf90_open_par(TRIM(nc_file),         &
+                                 cmode = mode_flag,     &
+                                 comm  = COMM_MODEL,    &
+                                 info  = MPI_INFO_NULL, &
+                                 ncid  = ncID)
+    else if(master_model) then
        mode_flag = NF90_NOWRITE
        istat = nf90_open(TRIM(nc_file), mode_flag, ncID)
     end if
@@ -975,7 +956,7 @@ CONTAINS
        istat = nf90_inq_dimid        (ncID, tim_nc_name, nt_ncID)
        istat = nf90_inquire_dimension(ncID, nt_ncID,tim_nc_name,nt)
     else
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_dimid        (ncID, tim_nc_name, nt_ncID)
           istat = nf90_inquire_dimension(ncID, nt_ncID,tim_nc_name,nt)
        end if
@@ -994,10 +975,11 @@ CONTAINS
     !
     ! timesec
     !
-    if(PARALLEL_IO.or.master) then
+    if(PARALLEL_IO.or.master_model) then
        start1d=(/1/)
        count1d=(/nt/)
        istat = nf90_inq_varid(ncID, tim_nc_name, tim_ncID)
+       istat = nf90_var_par_access(ncID,tim_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var(ncID, tim_ncID, MY_MET%timesec,start=start1d,count=count1d)
     end if
     if(.not.PARALLEL_IO) call parallel_bcast(MY_MET%timesec,nt,0)
@@ -1014,10 +996,11 @@ CONTAINS
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
        istat = nf90_inq_varid(ncID, lmask_nc_name, lmask_ncID)
+       istat = nf90_var_par_access(ncID,lmask_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, lmask_ncID, MY_MET%my_lmaskc,start=start2d,count=count2d)
     else
        allocate(work2d(nbx,nby))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, lmask_nc_name, lmask_ncID)
           istat = nf90_get_var  (ncID, lmask_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
        end if
@@ -1031,10 +1014,11 @@ CONTAINS
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
        istat = nf90_inq_varid(ncID, z0_nc_name, z0_ncID)
+       istat = nf90_var_par_access(ncID,z0_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, z0_ncID, MY_MET%my_z0c,start=start2d,count=count2d)
     else
        allocate(work2d(nbx,nby))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, z0_nc_name, z0_ncID)
           istat = nf90_get_var  (ncID, z0_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
        end if
@@ -1048,10 +1032,11 @@ CONTAINS
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
        istat = nf90_inq_varid(ncID, luse_nc_name, luse_ncID)
+       istat = nf90_var_par_access(ncID,luse_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, luse_ncID, MY_MET%my_lusec,start=start2d,count=count2d)
     else
        allocate(work2d(nbx,nby))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, luse_nc_name, luse_ncID)
           istat = nf90_get_var  (ncID, luse_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
        end if
@@ -1076,16 +1061,17 @@ CONTAINS
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
        istat = nf90_inq_varid(ncID, pblh_nc_name, pblh_ncID)
+       istat = nf90_var_par_access(ncID,pblh_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, pblh_ncID, MY_MET%my_pblhc,start=start3d,count=count3d)
     else
        allocate(work2d(nbx,nby))
        allocate(work3d(nbx,nby,nt))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, pblh_nc_name, pblh_ncID)
           istat = nf90_get_var  (ncID, pblh_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        do it = 1,nt
-          if(master) work2d(:,:) = work3d(:,:,it)
+          if(master_model) work2d(:,:) = work3d(:,:,it)
           call domain_scatter_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_pblhc(:,:,it))
        end do
        deallocate(work2d)
@@ -1098,16 +1084,17 @@ CONTAINS
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
        istat = nf90_inq_varid(ncID, ust_nc_name, ust_ncID)
+       istat = nf90_var_par_access(ncID,ust_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, ust_ncID, MY_MET%my_ustc,start=start3d,count=count3d)
     else
        allocate(work2d(nbx,nby))
        allocate(work3d(nbx,nby,nt))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, ust_nc_name, ust_ncID)
           istat = nf90_get_var  (ncID, ust_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        do it = 1,nt
-          if(master) work2d(:,:) = work3d(:,:,it)
+          if(master_model) work2d(:,:) = work3d(:,:,it)
           call domain_scatter_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_ustc(:,:,it))
        end do
        deallocate(work2d)
@@ -1120,16 +1107,17 @@ CONTAINS
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
        istat = nf90_inq_varid(ncID, smoi_nc_name, smoi_ncID)
+       istat = nf90_var_par_access(ncID,smoi_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, smoi_ncID, MY_MET%my_smoic,start=start3d,count=count3d)
     else
        allocate(work2d(nbx,nby))
        allocate(work3d(nbx,nby,nt))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, smoi_nc_name, smoi_ncID)
           istat = nf90_get_var  (ncID, smoi_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        do it = 1,nt
-          if(master) work2d(:,:) = work3d(:,:,it)
+          if(master_model) work2d(:,:) = work3d(:,:,it)
           call domain_scatter_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_smoic(:,:,it))
        end do
        deallocate(work2d)
@@ -1142,16 +1130,17 @@ CONTAINS
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
        istat = nf90_inq_varid(ncID, prec_nc_name, prec_ncID)
+       istat = nf90_var_par_access(ncID,prec_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, prec_ncID, MY_MET%my_prec,start=start3d,count=count3d)
     else
        allocate(work2d(nbx,nby))
        allocate(work3d(nbx,nby,nt))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, prec_nc_name, prec_ncID)
           istat = nf90_get_var  (ncID, prec_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        do it = 1,nt
-          if(master) work2d(:,:) = work3d(:,:,it)
+          if(master_model) work2d(:,:) = work3d(:,:,it)
           call domain_scatter_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_prec(:,:,it))
        end do
        deallocate(work2d)
@@ -1164,16 +1153,17 @@ CONTAINS
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
        istat = nf90_inq_varid(ncID, u10_nc_name, u10_ncID)
+       istat = nf90_var_par_access(ncID,u10_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, u10_ncID, MY_MET%my_u10,start=start3d,count=count3d)
     else
        allocate(work2d(nbx,nby))
        allocate(work3d(nbx,nby,nt))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, u10_nc_name, u10_ncID)
           istat = nf90_get_var  (ncID, u10_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        do it = 1,nt
-          if(master) work2d(:,:) = work3d(:,:,it)
+          if(master_model) work2d(:,:) = work3d(:,:,it)
           call domain_scatter_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_u10(:,:,it))
        end do
        deallocate(work2d)
@@ -1186,16 +1176,17 @@ CONTAINS
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
        istat = nf90_inq_varid(ncID, v10_nc_name, v10_ncID)
+       istat = nf90_var_par_access(ncID,v10_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, v10_ncID, MY_MET%my_v10,start=start3d,count=count3d)
     else
        allocate(work2d(nbx,nby))
        allocate(work3d(nbx,nby,nt))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, v10_nc_name, v10_ncID)
           istat = nf90_get_var  (ncID, v10_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        do it = 1,nt
-          if(master) work2d(:,:) = work3d(:,:,it)
+          if(master_model) work2d(:,:) = work3d(:,:,it)
           call domain_scatter_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_v10(:,:,it))
        end do
        deallocate(work2d)
@@ -1208,16 +1199,17 @@ CONTAINS
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
        istat = nf90_inq_varid(ncID, t2_nc_name, t2_ncID)
+       istat = nf90_var_par_access(ncID,t2_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, t2_ncID, MY_MET%my_t2,start=start3d,count=count3d)
     else
        allocate(work2d(nbx,nby))
        allocate(work3d(nbx,nby,nt))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, t2_nc_name, t2_ncID)
           istat = nf90_get_var  (ncID, t2_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        do it = 1,nt
-          if(master) work2d(:,:) = work3d(:,:,it)
+          if(master_model) work2d(:,:) = work3d(:,:,it)
           call domain_scatter_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_t2(:,:,it))
        end do
        deallocate(work2d)
@@ -1230,16 +1222,17 @@ CONTAINS
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
        istat = nf90_inq_varid(ncID, mon_nc_name, mon_ncID)
+       istat = nf90_var_par_access(ncID,mon_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, mon_ncID, MY_MET%my_monc,start=start3d,count=count3d)
     else
        allocate(work2d(nbx,nby))
        allocate(work3d(nbx,nby,nt))
-       if(master) then
+       if(master_model) then
           istat = nf90_inq_varid(ncID, mon_nc_name, mon_ncID)
           istat = nf90_get_var  (ncID, mon_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        do it = 1,nt
-          if(master) work2d(:,:) = work3d(:,:,it)
+          if(master_model) work2d(:,:) = work3d(:,:,it)
           call domain_scatter_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_monc(:,:,it))
        end do
        deallocate(work2d)
@@ -1264,9 +1257,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, p_nc_name, p_ncID)
+       istat = nf90_var_par_access(ncID,p_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, p_ncID, MY_MET%my_pc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, p_nc_name, p_ncID)
@@ -1276,7 +1270,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_pc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1289,9 +1283,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, t_nc_name, t_ncID)
+       istat = nf90_var_par_access(ncID,t_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, t_ncID, MY_MET%my_tc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, t_nc_name, t_ncID)
@@ -1301,7 +1296,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_tc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1314,9 +1309,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, tp_nc_name, tp_ncID)
+       istat = nf90_var_par_access(ncID,tp_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, tp_ncID, MY_MET%my_tpc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, tp_nc_name, tp_ncID)
@@ -1326,7 +1322,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_tpc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1339,9 +1335,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, tv_nc_name, tv_ncID)
+       istat = nf90_var_par_access(ncID,tv_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, tv_ncID, MY_MET%my_tvc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, tv_nc_name, tv_ncID)
@@ -1351,7 +1348,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_tvc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1364,9 +1361,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, u_nc_name, u_ncID)
+       istat = nf90_var_par_access(ncID,u_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, u_ncID, MY_MET%my_uc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, u_nc_name, u_ncID)
@@ -1376,7 +1374,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_uc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1389,9 +1387,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, v_nc_name, v_ncID)
+       istat = nf90_var_par_access(ncID,v_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, v_ncID, MY_MET%my_vc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, v_nc_name, v_ncID)
@@ -1401,7 +1400,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_vc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1414,9 +1413,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, w_nc_name, w_ncID)
+       istat = nf90_var_par_access(ncID,w_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, w_ncID, MY_MET%my_wc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, w_nc_name, w_ncID)
@@ -1426,7 +1426,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_wc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1439,9 +1439,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, qv_nc_name, qv_ncID)
+       istat = nf90_var_par_access(ncID,qv_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, qv_ncID, MY_MET%my_qvc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, qv_nc_name, qv_ncID)
@@ -1451,7 +1452,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_qvc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1464,9 +1465,10 @@ CONTAINS
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
        istat = nf90_inq_varid(ncID, rho_nc_name, rho_ncID)
+       istat = nf90_var_par_access(ncID,rho_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var  (ncID, rho_ncID, MY_MET%my_rhoc,start=start4d,count=count4d)
     else
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
           istat = nf90_inq_varid(ncID, rho_nc_name, rho_ncID)
@@ -1476,7 +1478,7 @@ CONTAINS
           allocate(work4d(1,1,1,1))
        end if
        do it = 1,nt
-          if(master) work3d(:,:,:) = work4d(:,:,:,it)
+          if(master_model) work3d(:,:,:) = work4d(:,:,:,it)
           call domain_scatter_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_rhoc(:,:,:,it))
        end do
        deallocate(work3d)
@@ -1485,7 +1487,7 @@ CONTAINS
     !
     !*** Close the file
     !
-    if(PARALLEL_IO.or.master) then
+    if(PARALLEL_IO.or.master_model) then
        istat = nf90_close(ncID)
     end if
     !
@@ -1550,8 +1552,12 @@ CONTAINS
        mode_flag = IOR(NF90_NETCDF4, NF90_CLASSIC_MODEL)
        mode_flag = IOR(mode_flag, NF90_MPIIO)
        mode_flag = IOR(mode_flag, NF90_CLOBBER)
-       istat     = nf90_create_par(TRIM(nc_file), cmode=mode_flag , comm=COMM_WORLD, info = MPI_INFO_NULL, ncid=ncID)
-    else if(master) then
+       istat     = nf90_create_par(TRIM(nc_file),         &
+                                   cmode = mode_flag,     &
+                                   comm  = COMM_MODEL,    &
+                                   info  = MPI_INFO_NULL, &
+                                   ncid  = ncID)
+    else if(master_model) then
        mode_flag = IOR(NF90_CLOBBER,NF90_NETCDF4)
        istat     = nf90_create(TRIM(nc_file),cmode=mode_flag, ncid=ncID)
     end if
@@ -1560,26 +1566,20 @@ CONTAINS
     istat     = nf90_create(TRIM(nc_file),cmode=mode_flag, ncid=ncID)
 #endif
     !
-    !*** Check errors
+    !*** Check errors creating files
     !
-    if(PARALLEL_IO.and.istat.ne.0) then
-       MY_ERR%flag    = istat
-       MY_ERR%message = 'Unable to create '//TRIM(nc_file)
-       return
-    else
-       call parallel_bcast(istat,1,0)
-       if(istat.ne.0) then
-          MY_ERR%flag    = istat
-          MY_ERR%message = 'Unable to create '//TRIM(nc_file)
-          return
-       end if
+    if(.not.PARALLEL_IO) call parallel_bcast(istat,1,0)
+    if(istat.ne.nf90_noerr) then
+        MY_ERR%flag    = istat
+        MY_ERR%message = nf90_strerror(istat)
+        return
     end if
     !
     !*** File dimensions
     !
-    if(PARALLEL_IO.or.master) then
+    if(PARALLEL_IO.or.master_model) then
        !
-       !  Define dimensions
+       !  1. Define dimensions
        !
        select case(MY_GRID%map_h)
        case(MAP_H_CARTESIAN)
@@ -1590,7 +1590,7 @@ CONTAINS
           istat = nf90_def_dim(ncID, lon_nc_name, nbx , nx_ncID )
           istat = nf90_def_dim(ncID, lat_nc_name, nby , ny_ncID )
           !
-       case(MAP_H_POLAR)
+       case(MAP_H_POLAR,MAP_H_MERCATOR)
           MY_ERR%flag    = 1
           MY_ERR%message = 'Mapping not implemented yet'
           !
@@ -1601,282 +1601,222 @@ CONTAINS
        end select
        !
        istat = nf90_def_dim(ncID, sig_nc_name,nbz   , ns_ncID  )
-       istat = nf90_def_dim(ncID, str_nc_name,s_name, nstr_ncID)
        istat = nf90_def_dim(ncID, tim_nc_name,nt    , nt_ncID  )
        !
-       ! Define coordinate variables
+       ! 2. Define coordinate variables
        !
        select case(MY_GRID%map_h)
        case(MAP_H_CARTESIAN)
-          attr_desc  = 'x-coordinate. East positive'
-          attr_units = 'm'
-          istat = nf90_def_var(ncID, x_nc_name ,NF90_MYTYPE, (/nx_ncID/), lon_ncID)
-          istat = nf90_put_att(ncID, lon_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, lon_ncID, 'units',       attr_units)
           !
-          attr_desc  = 'y-coordinate. North positive'
-          attr_units = 'm'
+          istat = nf90_def_var(ncID, x_nc_name ,NF90_MYTYPE, (/nx_ncID/), lon_ncID)
+          istat = nf90_put_att(ncID, lon_ncID, attr_long_name, 'x-coordinate')
+          istat = nf90_put_att(ncID, lon_ncID, attr_units_name,'m')
+          istat = nf90_put_att(ncID, lon_ncID, attr_min_name,   MY_GRID%lonmin)
+          istat = nf90_put_att(ncID, lon_ncID, attr_max_name,   MY_GRID%lonmax)
+          istat = nf90_put_att(ncID, lon_ncID, attr_cell_name,  MY_GRID%dlon)
+          istat = nf90_put_att(ncID, lon_ncID, attr_projection_name,'cartesian')
+          istat = nf90_put_att(ncID, lon_ncID, attr_map_h_name, MY_GRID%map_h)
+          !
           istat = nf90_def_var(ncID, y_nc_name ,NF90_MYTYPE, (/ny_ncID/), lat_ncID)
-          istat = nf90_put_att(ncID, lat_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, lat_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, lat_ncID, attr_long_name, 'y-coordinate')
+          istat = nf90_put_att(ncID, lat_ncID, attr_units_name,'m')
+          istat = nf90_put_att(ncID, lat_ncID, attr_min_name,   MY_GRID%latmin)
+          istat = nf90_put_att(ncID, lat_ncID, attr_max_name,   MY_GRID%latmax)
+          istat = nf90_put_att(ncID, lat_ncID, attr_cell_name,  MY_GRID%dlat)
+          istat = nf90_put_att(ncID, lat_ncID, attr_projection_name,'cartesian')
+          istat = nf90_put_att(ncID, lat_ncID, attr_map_h_name, MY_GRID%map_h)
           !
        case(MAP_H_SPHERICAL)
-          attr_desc  = 'longitude'
-          attr_units = 'degrees_east'
+          !
           istat = nf90_def_var(ncID, lon_nc_name ,NF90_MYTYPE, (/nx_ncID/), lon_ncID)
-          istat = nf90_put_att(ncID, lon_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, lon_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, lon_ncID, attr_long_name, 'longitude')
+          istat = nf90_put_att(ncID, lon_ncID, attr_short_name,'longitude')
+          istat = nf90_put_att(ncID, lon_ncID, attr_units_name,'degrees_east')
+          istat = nf90_put_att(ncID, lon_ncID, attr_min_name,   MY_GRID%lonmin)
+          istat = nf90_put_att(ncID, lon_ncID, attr_max_name,   MY_GRID%lonmax)
+          istat = nf90_put_att(ncID, lon_ncID, attr_cell_name,  MY_GRID%dlon)
+          istat = nf90_put_att(ncID, lon_ncID, attr_projection_name,'spherical')
+          istat = nf90_put_att(ncID, lon_ncID, attr_map_h_name, MY_GRID%map_h)
           !
-          attr_desc  = 'latitude'
-          attr_units = 'degrees_north'
           istat = nf90_def_var(ncID, lat_nc_name ,NF90_MYTYPE, (/ny_ncID/), lat_ncID)
-          istat = nf90_put_att(ncID, lat_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, lat_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, lat_ncID, attr_long_name, 'latitude')
+          istat = nf90_put_att(ncID, lat_ncID, attr_short_name,'latitude')
+          istat = nf90_put_att(ncID, lat_ncID, attr_units_name,'degrees_north')
+          istat = nf90_put_att(ncID, lat_ncID, attr_min_name,   MY_GRID%latmin)
+          istat = nf90_put_att(ncID, lat_ncID, attr_max_name,   MY_GRID%latmax)
+          istat = nf90_put_att(ncID, lat_ncID, attr_cell_name,  MY_GRID%dlat)
+          istat = nf90_put_att(ncID, lat_ncID, attr_projection_name,'spherical')
+          istat = nf90_put_att(ncID, lat_ncID, attr_map_h_name, MY_GRID%map_h)
           !
-       case(MAP_H_POLAR)
+       case(MAP_H_POLAR, MAP_H_MERCATOR)
           MY_ERR%flag    = 1
           MY_ERR%message = 'Mapping not implemented yet'
           !
-       case default
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Incorrect horizontal mapping'
-          !
        end select
        !
-       attr_desc  = 'sigma level'
-       attr_units = '-'
+       select case(MY_GRID%map_v)
+       case(MAP_V_CARTESIAN)
+          attr_desc  = 'cartesian'
+          attr_units = 'm'
+       case(MAP_V_SIGMA_NO_DECAY)
+          attr_desc  = 'sigma-z coordinates with no decay'
+          attr_units = 'sigma_level'
+       case(MAP_V_SIGMA_LINEAR_DECAY)
+          attr_desc  = 'sigma-z coordinates with linear decay'
+          attr_units = 'sigma_level'
+       case(MAP_V_SIGMA_EXPONENTIAL_DECAY)
+          attr_desc  = 'sigma-z coordinates with exponential decay'
+          attr_units = 'sigma_level'
+       end select
        istat = nf90_def_var(ncID, sig_nc_name ,NF90_MYTYPE, (/ns_ncID/), sig_ncID)
-       istat = nf90_put_att(ncID, sig_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, sig_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, sig_ncID, attr_long_name, attr_desc)
+       istat = nf90_put_att(ncID, sig_ncID, attr_units_name,attr_units)
+       istat = nf90_put_att(ncID, sig_ncID, attr_ztop_name, MY_GRID%X3max)
+       istat = nf90_put_att(ncID, sig_ncID, attr_map_v_name,MY_GRID%map_v)
        !
-       attr_desc  = 'time'
        write(attr_units,"(A,1X,I4.4,'-',I2.2,'-',I2.2,1X,A)") "seconds since",     &
             MY_TIME%start_year,  &
             MY_TIME%start_month, &
             MY_TIME%start_day,   &
             '0:0:0'
-       !        attr_units = 's'
        istat = nf90_def_var(ncID, tim_nc_name ,NF90_MYTYPE, (/nt_ncID/), tim_ncID)
-       istat = nf90_put_att(ncID, tim_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, tim_ncID, 'units',       attr_units)
-       istat = nf90_put_att(ncID, tim_ncID, 'calendar','proleptic_gregorian')
+       istat = nf90_put_att(ncID, tim_ncID, attr_long_name,     'time')
+       istat = nf90_put_att(ncID, tim_ncID, attr_units_name,    attr_units)
+       istat = nf90_put_att(ncID, tim_ncID, attr_calendar_name, 'proleptic_gregorian')
+       istat = nf90_put_att(ncID, tim_ncID, attr_year_name,     MY_TIME%start_year)
+       istat = nf90_put_att(ncID, tim_ncID, attr_month_name,    MY_TIME%start_month)
+       istat = nf90_put_att(ncID, tim_ncID, attr_day_name,      MY_TIME%start_day)
+       istat = nf90_put_att(ncID, tim_ncID, attr_dbs_start_name,MY_TIME%dbs_start)
+       istat = nf90_put_att(ncID, tim_ncID, attr_dbs_end_name,  MY_TIME%dbs_end)
        !
-       ! Define rest of variables
+       ! 3. Define the rest of variables
        !
-       attr_desc  = 'terrain elevation (a.s.l.)'
-       attr_units = 'm'
        istat = nf90_def_var(ncID, h_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID/), h_ncID)
-       istat = nf90_put_att(ncID, h_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, h_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, h_ncID, attr_long_name, 'terrain elevation (a.s.l.)')
+       istat = nf90_put_att(ncID, h_ncID, attr_units_name,'m')
+       istat = nf90_put_att(ncID, h_ncID, attr_short_name,'ground_level_altitude')
        !
-       attr_desc  = 'land mask (1 for land, 0 for water)'
-       attr_units = '-'
        istat = nf90_def_var(ncID, lmask_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID/), lmask_ncID)
-       istat = nf90_put_att(ncID, lmask_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, lmask_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, lmask_ncID, attr_long_name, 'land mask (1 for land, 0 for water)')
+       istat = nf90_put_att(ncID, lmask_ncID, attr_units_name, '-')
+       istat = nf90_put_att(ncID, lmask_ncID, attr_short_name,'land_binary_mask')
        !
-       attr_desc  = 'USGS 24 land use category'
-       attr_units = '-'
        istat = nf90_def_var(ncID, luse_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID/), luse_ncID)
-       istat = nf90_put_att(ncID, luse_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, luse_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, luse_ncID, attr_long_name,'USGS 24 land use category')
+       istat = nf90_put_att(ncID, luse_ncID, attr_units_name, '-')
+       istat = nf90_put_att(ncID, luse_ncID, attr_short_name,'land_use_category')
        !
-       attr_desc  = 'Surface roughness length'
-       attr_units = 'm'
        istat = nf90_def_var(ncID, z0_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID/), z0_ncID)
-       istat = nf90_put_att(ncID, z0_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, z0_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, z0_ncID, attr_long_name, 'Ground surface roughness length')
+       istat = nf90_put_att(ncID, z0_ncID, attr_units_name,'m')
+       istat = nf90_put_att(ncID, z0_ncID, attr_short_name,'surface_roughness_length')
        !
-       attr_desc  = 'z coordinate of sigma levels (a.s.l.)'
-       attr_units = 'm'
        istat = nf90_def_var(ncID, zs_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,ns_ncID/), zs_ncID)
-       istat = nf90_put_att(ncID, zs_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, zs_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, zs_ncID, attr_long_name, 'z coordinate of sigma levels (a.s.l.)')
+       istat = nf90_put_att(ncID, zs_ncID, attr_units_name,'m')
+       istat = nf90_put_att(ncID, zs_ncID, attr_short_name,'sigma_z_coordinate')
        !
-       attr_desc  = 'planetary boundary layer height'
-       attr_units = 'm'
        istat = nf90_def_var(ncID, pblh_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), pblh_ncID)
-       istat = nf90_put_att(ncID, pblh_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, pblh_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, pblh_ncID, attr_long_name, 'atmospheric (planetary) boundary layer height')
+       istat = nf90_put_att(ncID, pblh_ncID, attr_units_name, 'm')
+       istat = nf90_put_att(ncID, pblh_ncID, attr_short_name,'atmosphere_boundary_layer_thickness')
        !
-       attr_desc  = 'friction velocity u*'
-       attr_units = 'm/s'
        istat = nf90_def_var(ncID, ust_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ust_ncID)
-       istat = nf90_put_att(ncID, ust_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, ust_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, ust_ncID, attr_long_name, 'friction velocity u*')
+       istat = nf90_put_att(ncID, ust_ncID, attr_units_name,'m/s')
+       istat = nf90_put_att(ncID, ust_ncID,attr_short_name, 'friction_velocity')
        !
-       attr_desc  = 'soil moisture (first soil layer)'
-       attr_units = 'm3/m3'
        istat = nf90_def_var(ncID, smoi_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), smoi_ncID)
-       istat = nf90_put_att(ncID, smoi_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, smoi_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, smoi_ncID, attr_long_name, 'soil moisture (first soil layer)')
+       istat = nf90_put_att(ncID, smoi_ncID, attr_units_name,'m3/m3')
+       istat = nf90_put_att(ncID, smoi_ncID,attr_short_name, 'mass_content_of_water_in_soil_layer')
        !
-       attr_desc  = 'precipitation rate'
-       attr_units = 'mm/h'
        istat = nf90_def_var(ncID, prec_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), prec_ncID)
-       istat = nf90_put_att(ncID, prec_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, prec_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, prec_ncID, attr_long_name, 'precipitation rate')
+       istat = nf90_put_att(ncID, prec_ncID, attr_units_name, 'mm/h')
+       istat = nf90_put_att(ncID, prec_ncID,attr_short_name, 'lwe_precipitation_rate')
        !
-       attr_desc  = 'u-component (zonal) of wind at 10m'
-       attr_units = 'm/s'
        istat = nf90_def_var(ncID, u10_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), u10_ncID)
-       istat = nf90_put_att(ncID, u10_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, u10_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, u10_ncID, attr_long_name, 'u-component (zonal) of wind at 10m')
+       istat = nf90_put_att(ncID, u10_ncID, attr_units_name,'m/s')
        !
-       attr_desc  = 'v-component (meridional) of wind at 10m'
-       attr_units = 'm/s'
        istat = nf90_def_var(ncID, v10_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), v10_ncID)
-       istat = nf90_put_att(ncID, v10_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, v10_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, v10_ncID, attr_long_name, 'v-component (meridional) of wind at 10m')
+       istat = nf90_put_att(ncID, v10_ncID, attr_units_name,'m/s')
        !
-       attr_desc  = 'temperature at 2m (surface)'
-       attr_units = 'K'
        istat = nf90_def_var(ncID, t2_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), t2_ncID)
-       istat = nf90_put_att(ncID, t2_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, t2_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, t2_ncID, attr_long_name, 'temperature at 2m height')
+       istat = nf90_put_att(ncID, t2_ncID, attr_units_name, 'K')
        !
-       attr_desc  = 'Monin-Obukhov lenght'
-       attr_units = 'm'
        istat = nf90_def_var(ncID, mon_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), mon_ncID)
-       istat = nf90_put_att(ncID, mon_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, mon_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, mon_ncID, attr_long_name, 'Monin-Obukhov lenght')
+       istat = nf90_put_att(ncID, mon_ncID, attr_units_name, 'm')
        !
-       attr_desc  = 'pressure'
-       attr_units = 'Pa'
        istat = nf90_def_var(ncID, p_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), p_ncID)
-       istat = nf90_put_att(ncID, p_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, p_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, p_ncID, attr_long_name, 'pressure')
+       istat = nf90_put_att(ncID, p_ncID, attr_units_name, 'Pa')
+       istat = nf90_put_att(ncID, p_ncID,attr_short_name, 'air_pressure')
        !
-       attr_desc  = 'temperature'
-       attr_units = 'K'
        istat = nf90_def_var(ncID, t_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), t_ncID)
-       istat = nf90_put_att(ncID, t_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, t_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, t_ncID, attr_long_name, 'temperature')
+       istat = nf90_put_att(ncID, t_ncID, attr_units_name,'K')
+       istat = nf90_put_att(ncID, t_ncID,attr_short_name, 'air_temperature')
        !
-       attr_desc  = 'potential temperature'
-       attr_units = 'K'
        istat = nf90_def_var(ncID, tp_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), tp_ncID)
-       istat = nf90_put_att(ncID, tp_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, tp_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, tp_ncID, attr_long_name, 'potential temperature')
+       istat = nf90_put_att(ncID, tp_ncID, attr_units_name, 'K')
+       istat = nf90_put_att(ncID, tp_ncID,attr_short_name, 'air_potential_temperature')
        !
-       attr_desc  = 'virtual temperature'
-       attr_units = 'K'
        istat = nf90_def_var(ncID, tv_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), tv_ncID)
-       istat = nf90_put_att(ncID, tv_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, tv_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, tv_ncID, attr_long_name, 'virtual temperature')
+       istat = nf90_put_att(ncID, tv_ncID, attr_units_name, 'K')
+       istat = nf90_put_att(ncID, tv_ncID,attr_short_name, 'virtual_temperature')
        !
-       attr_desc  = 'u velocity'
-       attr_units = 'm/s'
        istat = nf90_def_var(ncID, u_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), u_ncID)
-       istat = nf90_put_att(ncID, u_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, u_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, u_ncID, attr_long_name, 'u wind velocity')
+       istat = nf90_put_att(ncID, u_ncID, attr_units_name, 'm/s')
+       istat = nf90_put_att(ncID, u_ncID,attr_short_name, 'eastward_wind')
        !
-       attr_desc  = 'v velocity'
-       attr_units = 'm/s'
        istat = nf90_def_var(ncID, v_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), v_ncID)
-       istat = nf90_put_att(ncID, v_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, v_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, v_ncID, attr_long_name, 'v wind velocity')
+       istat = nf90_put_att(ncID, v_ncID, attr_units_name,'m/s')
+       istat = nf90_put_att(ncID, v_ncID,attr_short_name, 'northward_wind')
        !
-       attr_desc  = 'w velocity'
-       attr_units = 'm/s'
        istat = nf90_def_var(ncID, w_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), w_ncID)
-       istat = nf90_put_att(ncID, w_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, w_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, w_ncID, attr_long_name, 'w wind velocity')
+       istat = nf90_put_att(ncID, w_ncID, attr_units_name, 'm/s')
+       istat = nf90_put_att(ncID, w_ncID,attr_short_name, 'upward_air_velocity')
        !
-       attr_desc  = 'specific humidity'
-       attr_units = 'kg/kg'
        istat = nf90_def_var(ncID, qv_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), qv_ncID)
-       istat = nf90_put_att(ncID, qv_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, qv_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, qv_ncID, attr_long_name, 'specific humidity')
+       istat = nf90_put_att(ncID, qv_ncID, attr_units_name,'kg/kg')
+       istat = nf90_put_att(ncID, qv_ncID,attr_short_name, 'specific_humidity')
        !
-       attr_desc  = 'density'
-       attr_units = 'kg/m3'
        istat = nf90_def_var(ncID, rho_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,sig_ncID,nt_ncID/), rho_ncID)
-       istat = nf90_put_att(ncID, rho_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, rho_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, rho_ncID, attr_long_name, 'air density')
+       istat = nf90_put_att(ncID, rho_ncID, attr_units_name,'kg/m3')
+       istat = nf90_put_att(ncID, rho_ncID,attr_short_name, 'air_density')
        !
-       ! Put global attributes
+       ! 4. Put global attributes
        !
-       attr_title = 'Meteo database for Fall3d from '//TRIM(MY_MET%meteo_data_type)
-       istat = nf90_put_att(ncID, NF90_GLOBAL, 'TITLE', attr_title)
-       !
-       attr_title = VERSION
-       istat = nf90_put_att(ncID, NF90_GLOBAL, 'CODE_VERSION', attr_title)
-       !
-       select case(MY_GRID%map_h)
-       case(MAP_H_CARTESIAN)
-          attr_title = 'cartesian'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_H_TYPE', attr_title)
-          !
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_maph_name,   MY_GRID%map_h)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_lonmin_name, MY_GRID%lonmin)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_lonmax_name, MY_GRID%lonmax)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_dlon_name,   MY_GRID%dlon)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_latmin_name, MY_GRID%latmin)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_latmax_name, MY_GRID%latmax)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_dlat_name,   MY_GRID%dlat)
-          !
-       case(MAP_H_SPHERICAL)
-          attr_title = 'spherical'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_H_TYPE', attr_title)
-          !
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_maph_name,   MY_GRID%map_h)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_lonmin_name, MY_GRID%lonmin)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_lonmax_name, MY_GRID%lonmax)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_dlon_name,   MY_GRID%dlon)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_latmin_name, MY_GRID%latmin)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_latmax_name, MY_GRID%latmax)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_dlat_name,   MY_GRID%dlat)
-          !
-       case(MAP_H_POLAR)
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Mapping not implemented yet'
-          !
-       case default
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Incorrect horizontal mapping'
-          !
-       end select
-       !
-       select case(MY_GRID%map_v)
-       case(MAP_V_SIGMA_NO_DECAY)
-          attr_title = 'sigma_no_decay'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_V_TYPE', attr_title)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_mapv_name, MY_GRID%map_v)
-
-          !
-       case(MAP_V_SIGMA_LINEAR_DECAY)
-          attr_title = 'sigma_linear_decay'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_V_TYPE', attr_title)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_mapv_name, MY_GRID%map_v)
-          !
-       case(MAP_V_SIGMA_EXPONENTIAL_DECAY)
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Mapping not implemented yet'
-          !
-       case default
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Incorrect vertical mapping'
-          !
-       end select
-       !
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_ztop_name, MY_GRID%X3max)
-       !
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_year_name     , MY_TIME%start_year)
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_month_name    , MY_TIME%start_month)
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_day_name      , MY_TIME%start_day)
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_dbs_start_name, MY_TIME%dbs_start)
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_dbs_end_name  , MY_TIME%dbs_end)
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_conventions_name, 'CF-1.8')
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_references_name,  'NetCDF Climate and Forecast (CF) Metadata Conventions')
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_title_name,       'Meteo database from model '//TRIM(MY_MET%meteo_data_type))
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_source_name,      'SetDbs task in FALL3D model version '//VERSION)
+       !LAM: error in PARALLEL_IO
+       !istat = nf90_put_att(ncID, NF90_GLOBAL, attr_history_name,      MY_ERR%cpu_start_date)
        !
        istat = nf90_enddef(ncID)
        !
     end if
     !
+    !*** Check errors defining variables
+    !
     if(.not.PARALLEL_IO) call parallel_bcast(istat,1,0)
     if(istat.ne.nf90_noerr) then
-       MY_ERR%flag    = istat
-       MY_ERR%message = 'Error defining variables'
-       return
+        MY_ERR%flag    = istat
+        MY_ERR%message = nf90_strerror(istat)
+        return
     end if
     !
     !*** Write variables
@@ -1885,17 +1825,26 @@ CONTAINS
        !
        !                 PARALLEL IO
        !
+       !*** Set collective I/O
+       !
        !
        !  lon (or x)
        !
+       allocate(work1d(my_ibs:my_ibe))
+       do i = my_ibs,my_ibe
+          work1d(i) = MY_GRID%lonmin + (i-1)*MY_GRID%dlon
+       end do
        start1d=(/my_ibs/)
        count1d=(/my_ibe-my_ibs+1/)
-       istat = nf90_put_var(ncID, lon_ncID, MY_GRID%lon_c,start=start1d,count=count1d)
+       istat = nf90_var_par_access(ncID,lon_ncID,access = NF90_COLLECTIVE)
+       istat = nf90_put_var(ncID, lon_ncID, work1d,start=start1d,count=count1d)
+       deallocate(work1d)
        !
        !  lat (or y)
        !
        start1d=(/my_jbs/)
        count1d=(/my_jbe-my_jbs+1/)
+       istat = nf90_var_par_access(ncID,lat_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, lat_ncID, MY_GRID%lat_c,start=start1d,count=count1d)
        !
        ! sigma level
@@ -1906,6 +1855,7 @@ CONTAINS
        end do
        start1d=(/my_kbs/)
        count1d=(/my_kbe-my_kbs+1/)
+       istat = nf90_var_par_access(ncID,sig_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, sig_ncID, work1d,start=start1d,count=count1d)
        deallocate(work1d)
        !
@@ -1913,138 +1863,161 @@ CONTAINS
        !
        start1d=(/1/)
        count1d=(/nt/)
+       istat = nf90_var_par_access(ncID,tim_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, tim_ncID, MY_MET%timesec,start=start1d,count=count1d)
        !
        ! z coordinate of sigma layers
        !
        start3d=(/my_ibs,my_jbs,my_kbs/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1/)
+       istat = nf90_var_par_access(ncID,zs_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, zs_ncID, MY_GRID%z_c,start=start3d,count=count3d)
        !
        ! terrain
        !
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
+       istat = nf90_var_par_access(ncID,h_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, h_ncID, MY_GRID%h_c,start=start2d,count=count2d)
        !
        ! land mask
        !
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
+       istat = nf90_var_par_access(ncID,lmask_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, lmask_ncID, MY_MET%my_lmaskc,start=start2d,count=count2d)
        !
        ! z0
        !
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
+       istat = nf90_var_par_access(ncID,z0_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, z0_ncID, MY_MET%my_z0c,start=start2d,count=count2d)
        !
        ! land use
        !
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
+       istat = nf90_var_par_access(ncID,luse_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, luse_ncID, MY_MET%my_lusec,start=start2d,count=count2d)
        !
        ! pblh
        !
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
+       istat = nf90_var_par_access(ncID,pblh_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, pblh_ncID, MY_MET%my_pblhc,start=start3d,count=count3d)
        !
        ! u*
        !
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
+       istat = nf90_var_par_access(ncID,ust_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, ust_ncID, MY_MET%my_ustc,start=start3d,count=count3d)
        !
        ! smoi
        !
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
+       istat = nf90_var_par_access(ncID,smoi_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, smoi_ncID, MY_MET%my_smoic,start=start3d,count=count3d)
        !
        ! prec
        !
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
+       istat = nf90_var_par_access(ncID,prec_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, prec_ncID, MY_MET%my_prec,start=start3d,count=count3d)
        !
        ! u10
        !
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
+       istat = nf90_var_par_access(ncID,u10_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, u10_ncID, MY_MET%my_u10,start=start3d,count=count3d)
        !
        ! v10
        !
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
+       istat = nf90_var_par_access(ncID,v10_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, v10_ncID, MY_MET%my_v10,start=start3d,count=count3d)
        !
        ! T2 (surface)
        !
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
+       istat = nf90_var_par_access(ncID,t2_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, t2_ncID, MY_MET%my_t2,start=start3d,count=count3d)
        !
        ! Monin
        !
        start3d=(/my_ibs,my_jbs,1/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,nt/)
+       istat = nf90_var_par_access(ncID,mon_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, mon_ncID, MY_MET%my_monc,start=start3d,count=count3d)
        !
        ! pressure
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,p_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, p_ncID, MY_MET%my_pc,start=start4d,count=count4d)
        !
        ! temperature
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,t_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, t_ncID, MY_MET%my_tc,start=start4d,count=count4d)
        !
        ! potential temperature
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,tp_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, tp_ncID, MY_MET%my_tpc,start=start4d,count=count4d)
        !
        ! virtual potential temperature
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,tv_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, tv_ncID, MY_MET%my_tvc,start=start4d,count=count4d)
        !
        ! u velocity
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,u_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, u_ncID, MY_MET%my_uc,start=start4d,count=count4d)
        !
        ! v velocity
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,v_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, v_ncID, MY_MET%my_vc,start=start4d,count=count4d)
        !
        ! w velocity
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,w_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, w_ncID, MY_MET%my_wc,start=start4d,count=count4d)
        !
        ! specific humidity
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,qv_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, qv_ncID, MY_MET%my_qvc,start=start4d,count=count4d)
        !
        ! density
        !
        start4d=(/my_ibs,my_jbs,my_kbs,1/)
        count4d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1,nt/)
+       istat = nf90_var_par_access(ncID,rho_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, rho_ncID, MY_MET%my_rhoc,start=start4d,count=count4d)
        !
        istat = nf90_close(ncID)
@@ -2055,7 +2028,7 @@ CONTAINS
        !
        !  lon (or x)
        !
-       if(master) then
+       if(master_model) then
           allocate(work1d(nbx))
           do i = 1,nbx
              work1d(i) = MY_GRID%lonmin + (i-1)*MY_GRID%dlon
@@ -2074,7 +2047,7 @@ CONTAINS
        !
        !  lat (or y)
        !
-       if(master) then
+       if(master_model) then
           allocate(work1d(nby))
           do j = 1,nby
              work1d(j) = MY_GRID%latmin + (j-1)*MY_GRID%dlat
@@ -2085,7 +2058,7 @@ CONTAINS
        !
        !  sigma levels
        !
-       if(master) then
+       if(master_model) then
           allocate(work1d(nbz))
           do k = 1,nbz
              work1d(k) = MY_GRID%gl_sigma(k)
@@ -2096,25 +2069,25 @@ CONTAINS
        !
        !  time
        !
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, tim_ncID, MY_MET%timesec, start=(/1/),count=(/nt/))
        end if
        !
        ! z coordinate of sigma layers
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
        else
           allocate(work3d(1,1,1))
        end if
        call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_GRID%z_c)
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, zs_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nbz/))
        end if
        !
        ! terrain
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           work2d(:,:) = work3d(:,:,1)
           istat = nf90_put_var(ncID, h_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
@@ -2124,46 +2097,46 @@ CONTAINS
        !
        ! land mask
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
        else
           allocate(work2d(1,1))
        end if
        call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_lmaskc)
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, lmask_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
        end if
        deallocate(work2d)
        !
        ! z0
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
        else
           allocate(work2d(1,1))
        end if
        call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_z0c)
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, z0_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
        end if
        deallocate(work2d)
        !
        ! land use
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
        else
           allocate(work2d(1,1))
        end if
        call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_lusec)
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, luse_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
        end if
        deallocate(work2d)
        !
        ! pblh
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           allocate(work3d(nbx,nby,nt))
        else
@@ -2172,9 +2145,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_pblhc(:,:,it))
-          if(master) work3d(:,:,it) = work2d(:,:)
+          if(master_model) work3d(:,:,it) = work2d(:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, pblh_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        deallocate(work2d)
@@ -2182,7 +2155,7 @@ CONTAINS
        !
        ! u*
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           allocate(work3d(nbx,nby,nt))
        else
@@ -2191,9 +2164,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_ustc(:,:,it))
-          if(master) work3d(:,:,it) = work2d(:,:)
+          if(master_model) work3d(:,:,it) = work2d(:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, ust_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        deallocate(work2d)
@@ -2201,7 +2174,7 @@ CONTAINS
        !
        ! smoi
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           allocate(work3d(nbx,nby,nt))
        else
@@ -2210,9 +2183,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_smoic(:,:,it))
-          if(master) work3d(:,:,it) = work2d(:,:)
+          if(master_model) work3d(:,:,it) = work2d(:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, smoi_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        deallocate(work2d)
@@ -2220,7 +2193,7 @@ CONTAINS
        !
        ! prec
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           allocate(work3d(nbx,nby,nt))
        else
@@ -2229,9 +2202,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_prec(:,:,it))
-          if(master) work3d(:,:,it) = work2d(:,:)
+          if(master_model) work3d(:,:,it) = work2d(:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, prec_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        deallocate(work2d)
@@ -2239,7 +2212,7 @@ CONTAINS
        !
        ! u10
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           allocate(work3d(nbx,nby,nt))
        else
@@ -2248,9 +2221,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_u10(:,:,it))
-          if(master) work3d(:,:,it) = work2d(:,:)
+          if(master_model) work3d(:,:,it) = work2d(:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, u10_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        deallocate(work2d)
@@ -2258,7 +2231,7 @@ CONTAINS
        !
        ! v10
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           allocate(work3d(nbx,nby,nt))
        else
@@ -2267,9 +2240,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_v10(:,:,it))
-          if(master) work3d(:,:,it) = work2d(:,:)
+          if(master_model) work3d(:,:,it) = work2d(:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, v10_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        deallocate(work2d)
@@ -2277,7 +2250,7 @@ CONTAINS
        !
        ! T2 (surface)
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           allocate(work3d(nbx,nby,nt))
        else
@@ -2286,9 +2259,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_t2(:,:,it))
-          if(master) work3d(:,:,it) = work2d(:,:)
+          if(master_model) work3d(:,:,it) = work2d(:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, t2_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        deallocate(work2d)
@@ -2296,7 +2269,7 @@ CONTAINS
        !
        ! Monin
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           allocate(work3d(nbx,nby,nt))
        else
@@ -2305,9 +2278,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo_2D(work2d,nbx,nby,MY_MET%my_monc(:,:,it))
-          if(master) work3d(:,:,it) = work2d(:,:)
+          if(master_model) work3d(:,:,it) = work2d(:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, mon_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nt/))
        end if
        deallocate(work2d)
@@ -2315,7 +2288,7 @@ CONTAINS
        !
        ! pressure
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2324,9 +2297,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_pc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, p_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2334,7 +2307,7 @@ CONTAINS
        !
        ! temperature
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2343,9 +2316,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_tc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, t_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2353,7 +2326,7 @@ CONTAINS
        !
        ! potential temperature
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2362,9 +2335,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_tpc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, tp_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2372,7 +2345,7 @@ CONTAINS
        !
        ! virtual temperature
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2381,9 +2354,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_tvc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, tv_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2391,7 +2364,7 @@ CONTAINS
        !
        ! U
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2400,9 +2373,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_uc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, u_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2410,7 +2383,7 @@ CONTAINS
        !
        ! V
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2419,9 +2392,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_vc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, v_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2429,7 +2402,7 @@ CONTAINS
        !
        ! W
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2438,9 +2411,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_wc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, w_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2448,7 +2421,7 @@ CONTAINS
        !
        ! specific humidity
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2457,9 +2430,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_qvc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, qv_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2467,7 +2440,7 @@ CONTAINS
        !
        ! density
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
           allocate(work4d(nbx,nby,nbz,nt))
        else
@@ -2476,9 +2449,9 @@ CONTAINS
        end if
        do it = 1,nt
           call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_MET%my_rhoc(:,:,:,it))
-          if(master) work4d(:,:,:,it) = work3d(:,:,:)
+          if(master_model) work4d(:,:,:,it) = work3d(:,:,:)
        end do
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, rho_ncID, work4d, start=(/1,1,1,1/),count=(/nbx,nby,nbz,nt/))
        end if
        deallocate(work3d)
@@ -2486,7 +2459,7 @@ CONTAINS
        !
        ! close file
        !
-       if(master) then
+       if(master_model) then
           istat = nf90_close(ncID)
        end if
        !
@@ -2573,8 +2546,12 @@ CONTAINS
        mode_flag = IOR(NF90_NETCDF4, NF90_CLASSIC_MODEL)
        mode_flag = IOR(mode_flag, NF90_MPIIO)
        mode_flag = IOR(mode_flag, NF90_CLOBBER)
-       istat     = nf90_create_par(TRIM(nc_file), cmode=mode_flag , comm=COMM_WORLD, info = MPI_INFO_NULL, ncid=ncID)
-    else if(master) then
+       istat     = nf90_create_par(TRIM(nc_file),         &
+                                   cmode = mode_flag,     &
+                                   comm  = COMM_MODEL,    &
+                                   info  = MPI_INFO_NULL, &
+                                   ncid  = ncID)
+    else if(master_model) then
        mode_flag = IOR(NF90_CLOBBER,NF90_NETCDF4)
        istat     = nf90_create(TRIM(nc_file),cmode=mode_flag, ncid=ncID)
     end if
@@ -2583,26 +2560,20 @@ CONTAINS
     istat     = nf90_create(TRIM(nc_file),cmode=mode_flag, ncid=ncID)
 #endif
     !
-    !*** Check errors
+    !*** Check errors creating file
     !
-    if(PARALLEL_IO.and.istat.ne.0) then
-       MY_ERR%flag    = istat
-       MY_ERR%message = 'Unable to create '//TRIM(nc_file)
-       return
-    else
-       call parallel_bcast(istat,1,0)
-       if(istat.ne.0) then
-          MY_ERR%flag    = istat
-          MY_ERR%message = 'Unable to create '//TRIM(nc_file)
-          return
-       end if
+    if(.not.PARALLEL_IO) call parallel_bcast(istat,1,0)
+    if(istat.ne.nf90_noerr) then
+        MY_ERR%flag    = istat
+        MY_ERR%message = nf90_strerror(istat)
+        return
     end if
     !
     !*** File dimensions
     !
-    if(PARALLEL_IO.or.master) then
+    if(PARALLEL_IO.or.master_model) then
        !
-       !  Define dimensions
+       !  1. Define dimensions
        !
        select case(MY_GRID%map_h)
        case(MAP_H_CARTESIAN)
@@ -2647,69 +2618,93 @@ CONTAINS
        istat = nf90_def_dim(ncID, str_nc_name, s_name, nstr_ncID )
        istat = nf90_def_dim(ncID, tim_nc_name, NF90_UNLIMITED, nt_ncID)
        !
-       ! Define coordinate variables
+       ! 2. Define coordinate variables
        !
        select case(MY_GRID%map_h)
-       case(MAP_H_CARTESIAN, MAP_H_POLAR, MAP_H_MERCATOR)
-          attr_desc  = 'x-coordinate. East positive'
-          attr_units = 'm'
-          istat = nf90_def_var(ncID, x_nc_name ,NF90_MYTYPE, (/nx_ncID/), lon_ncID)
-          istat = nf90_put_att(ncID, lon_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, lon_ncID, 'units',       attr_units)
+       case(MAP_H_CARTESIAN)
           !
-          attr_desc  = 'y-coordinate. North positive'
-          attr_units = 'm'
+          istat = nf90_def_var(ncID, x_nc_name ,NF90_MYTYPE, (/nx_ncID/), lon_ncID)
+          istat = nf90_put_att(ncID, lon_ncID, attr_long_name, 'x-coordinate')
+          istat = nf90_put_att(ncID, lon_ncID, attr_units_name,'m')
+          istat = nf90_put_att(ncID, lon_ncID, attr_min_name,   MY_GRID%lonmin)
+          istat = nf90_put_att(ncID, lon_ncID, attr_max_name,   MY_GRID%lonmax)
+          istat = nf90_put_att(ncID, lon_ncID, attr_cell_name,  MY_GRID%dlon)
+          istat = nf90_put_att(ncID, lon_ncID, attr_projection_name,'cartesian')
+          istat = nf90_put_att(ncID, lon_ncID, attr_map_h_name, MY_GRID%map_h)
+          !
           istat = nf90_def_var(ncID, y_nc_name ,NF90_MYTYPE, (/ny_ncID/), lat_ncID)
-          istat = nf90_put_att(ncID, lat_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, lat_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, lat_ncID, attr_long_name, 'y-coordinate')
+          istat = nf90_put_att(ncID, lat_ncID, attr_units_name,'m')
+          istat = nf90_put_att(ncID, lat_ncID, attr_min_name,   MY_GRID%latmin)
+          istat = nf90_put_att(ncID, lat_ncID, attr_max_name,   MY_GRID%latmax)
+          istat = nf90_put_att(ncID, lat_ncID, attr_cell_name,  MY_GRID%dlat)
+          istat = nf90_put_att(ncID, lat_ncID, attr_projection_name,'cartesian')
           !
        case(MAP_H_SPHERICAL)
-          attr_desc  = 'longitude'
-          attr_units = 'degrees_east'
+          !
           istat = nf90_def_var(ncID, lon_nc_name ,NF90_MYTYPE, (/nx_ncID/), lon_ncID)
-          istat = nf90_put_att(ncID, lon_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, lon_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, lon_ncID, attr_long_name, 'longitude')
+          istat = nf90_put_att(ncID, lon_ncID, attr_short_name,'longitude')
+          istat = nf90_put_att(ncID, lon_ncID, attr_units_name,'degrees_east')
+          istat = nf90_put_att(ncID, lon_ncID, attr_min_name,   MY_GRID%lonmin)
+          istat = nf90_put_att(ncID, lon_ncID, attr_max_name,   MY_GRID%lonmax)
+          istat = nf90_put_att(ncID, lon_ncID, attr_cell_name,  MY_GRID%dlon)
+          istat = nf90_put_att(ncID, lon_ncID, attr_projection_name,'spherical')
+          istat = nf90_put_att(ncID, lon_ncID, attr_map_h_name, MY_GRID%map_h)
           !
-          attr_desc  = 'latitude'
-          attr_units = 'degrees_north'
           istat = nf90_def_var(ncID, lat_nc_name ,NF90_MYTYPE, (/ny_ncID/), lat_ncID)
-          istat = nf90_put_att(ncID, lat_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, lat_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, lat_ncID, attr_long_name, 'latitude')
+          istat = nf90_put_att(ncID, lat_ncID, attr_short_name,'latitude')
+          istat = nf90_put_att(ncID, lat_ncID, attr_units_name,'degrees_north')
+          istat = nf90_put_att(ncID, lat_ncID, attr_min_name,   MY_GRID%latmin)
+          istat = nf90_put_att(ncID, lat_ncID, attr_max_name,   MY_GRID%latmax)
+          istat = nf90_put_att(ncID, lat_ncID, attr_cell_name,  MY_GRID%dlat)
+          istat = nf90_put_att(ncID, lat_ncID, attr_projection_name,'spherical')
+          istat = nf90_put_att(ncID, lat_ncID, attr_map_h_name, MY_GRID%map_h)
           !
-       case default
+       case(MAP_H_POLAR, MAP_H_MERCATOR)
           MY_ERR%flag    = 1
-          MY_ERR%message = 'Incorrect horizontal mapping'
+          MY_ERR%message = 'Mapping not implemented yet'
           !
        end select
        !
-       attr_desc  = 'sigma level'
-       attr_units = '-'
+       select case(MY_GRID%map_v)
+       case(MAP_V_CARTESIAN)
+          attr_desc  = 'cartesian'
+          attr_units = 'm'
+       case(MAP_V_SIGMA_NO_DECAY)
+          attr_desc  = 'sigma-z coordinates with no decay'
+          attr_units = 'sigma_level'
+       case(MAP_V_SIGMA_LINEAR_DECAY)
+          attr_desc  = 'sigma-z coordinates with linear decay'
+          attr_units = 'sigma_level'
+       case(MAP_V_SIGMA_EXPONENTIAL_DECAY)
+          attr_desc  = 'sigma-z coordinates with exponential decay'
+          attr_units = 'sigma_level'
+       end select
        istat = nf90_def_var(ncID, sig_nc_name ,NF90_MYTYPE, (/ns_ncID/), sig_ncID)
-       istat = nf90_put_att(ncID, sig_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, sig_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, sig_ncID, attr_long_name, attr_desc)
+       istat = nf90_put_att(ncID, sig_ncID, attr_units_name,attr_units)
+       istat = nf90_put_att(ncID, sig_ncID, attr_ztop_name, MY_GRID%X3max)
+       istat = nf90_put_att(ncID, sig_ncID, attr_map_v_name,MY_GRID%map_v)
        !
-       attr_desc  = 'z coordinate (a.s.l)'
-       attr_units = 'm'
        istat = nf90_def_var(ncID, z_nc_name ,NF90_MYTYPE, (/nz_ncID/), z_ncID)
-       istat = nf90_put_att(ncID, z_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, z_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, z_ncID, attr_long_name, 'z coordinate (a.s.l)')
+       istat = nf90_put_att(ncID, z_ncID, attr_units_name, 'm')
        !
-       attr_desc  = 'bin number'
-       attr_units = '-'
        istat = nf90_def_var(ncID, bin_nc_name ,NF90_INT, (/nb_ncID/), bin_ncID)
-       istat = nf90_put_att(ncID, bin_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, bin_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, bin_ncID, attr_long_name, 'species bin number')
+       istat = nf90_put_att(ncID, bin_ncID, attr_units_name,'-')
        !
-       attr_desc  = 'species bin number'
-       attr_units = '-'
        do ispe = 1,MY_SPE%nspe
-          spe_code = MY_SPE%code(ispe)
-          sblock   = SPE_TAG    (spe_code)
-          name_nc  = TRIM(sblock)//TRIM(bin_spe_nc_name)
+          spe_code  = MY_SPE%code(ispe)
+          sblock    = SPE_TAG    (spe_code)
+          name_nc   = TRIM(sblock)//TRIM(bin_spe_nc_name)
+          attr_desc = TRIM(sblock)//'species bin number'
           !
           istat = nf90_def_var(ncID, name_nc ,NF90_INT, (/nb_spe_ncID(spe_code)/), bin_spe_ncID(spe_code))
-          istat = nf90_put_att(ncID, bin_spe_ncID(spe_code), 'description', attr_desc)
-          istat = nf90_put_att(ncID, bin_spe_ncID(spe_code), 'units',       attr_units)
+          istat = nf90_put_att(ncID, bin_spe_ncID(spe_code), attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, bin_spe_ncID(spe_code), attr_units_name, '-')
        end do
        !
        if(MY_CUTS%ncutx.gt.0) then
@@ -2722,8 +2717,8 @@ CONTAINS
              attr_units = 'deg'
           end select
           istat = nf90_def_var(ncID, xcut_nc_name ,NF90_MYTYPE, (/ncutx_ncID/), xcut_ncID)
-          istat = nf90_put_att(ncID, xcut_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, xcut_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, xcut_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, xcut_ncID, attr_units_name,attr_units)
        end if
        !
        if(MY_CUTS%ncuty.gt.0) then
@@ -2736,63 +2731,64 @@ CONTAINS
              attr_units = 'deg'
           end select
           istat = nf90_def_var(ncID, ycut_nc_name ,NF90_MYTYPE, (/ncuty_ncID/), ycut_ncID)
-          istat = nf90_put_att(ncID, ycut_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, ycut_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, ycut_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, ycut_ncID, attr_units_name,       attr_units)
        end if
        !
        if(MY_CUTS%ncutz.gt.0) then
           attr_desc  = 'z coordinate of x-y plane cuts'
           attr_units = 'm'
           istat = nf90_def_var(ncID, zcut_nc_name ,NF90_MYTYPE, (/ncutz_ncID/), zcut_ncID)
-          istat = nf90_put_att(ncID, zcut_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, zcut_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, zcut_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, zcut_ncID, attr_units_name,       attr_units)
        end if
        !
        if(MY_CUTS%nfl.gt.0) then
           attr_desc  = 'flight level value'
           attr_units = '-'
           istat = nf90_def_var(ncID, zflcut_nc_name, NF90_MYTYPE, (/nfl_ncID/), zflcut_ncID)
-          istat = nf90_put_att(ncID, zflcut_ncID, 'description', attr_desc)
-          istat = nf90_put_att(ncID, zflcut_ncID, 'units',       attr_units)
+          istat = nf90_put_att(ncID, zflcut_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, zflcut_ncID, attr_units_name,attr_units)
        end if
        !
        attr_desc  = 'PM bin number'
        attr_units = '-'
        istat = nf90_def_var(ncID, npm_nc_name ,NF90_INT, (/npm_ncID/), pm_ncID)
-       istat = nf90_put_att(ncID, pm_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, pm_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, pm_ncID, attr_long_name, attr_desc)
+       istat = nf90_put_att(ncID, pm_ncID, attr_units_name,       attr_units)
        !
-       attr_desc  = 'time'
        write(attr_units,"(A,1X,I4.4,'-',I2.2,'-',I2.2,1X,A)") "seconds since",     &
             MY_TIME%start_year,  &
             MY_TIME%start_month, &
             MY_TIME%start_day,   &
             '0:0:0'
-       !attr_units = 'h'
        istat = nf90_def_var(ncID, tim_nc_name ,NF90_INT, (/nt_ncID/), tim_ncID)
-       istat = nf90_put_att(ncID, tim_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, tim_ncID, 'units',       attr_units)
-       istat = nf90_put_att(ncID, tim_ncID, 'calendar','proleptic_gregorian')
+       istat = nf90_put_att(ncID, tim_ncID, attr_long_name,     'time')
+       istat = nf90_put_att(ncID, tim_ncID, attr_units_name,    attr_units)
+       istat = nf90_put_att(ncID, tim_ncID, attr_calendar_name, 'proleptic_gregorian')
+       istat = nf90_put_att(ncID, tim_ncID, attr_year_name,     MY_TIME%start_year)
+       istat = nf90_put_att(ncID, tim_ncID, attr_month_name,    MY_TIME%start_month)
+       istat = nf90_put_att(ncID, tim_ncID, attr_day_name,      MY_TIME%start_day)
        !
        attr_desc  = 'date in format DDmonYYYY_HH:MM'
        attr_units = '-'
        istat = nf90_def_var(ncID, date_nc_name ,NF90_CHAR, (/nstr_ncID,nt_ncID/), date_ncID)
-       istat = nf90_put_att(ncID, date_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, date_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, date_ncID, attr_long_name, attr_desc)
+       istat = nf90_put_att(ncID, date_ncID, attr_units_name,       attr_units)
        !
        ! Define time-independent variables
        !
        attr_desc  = 'terrain elevation (a.s.l.)'
        attr_units = 'm'
        istat = nf90_def_var(ncID, h_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID/), h_ncID)
-       istat = nf90_put_att(ncID, h_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, h_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, h_ncID, attr_long_name, attr_desc)
+       istat = nf90_put_att(ncID, h_ncID, attr_units_name,attr_units)
        !
        attr_desc  = 'z coordinate of sigma levels (a.s.l.)'
        attr_units = 'm'
        istat = nf90_def_var(ncID, zs_nc_name ,NF90_MYTYPE, (/nx_ncID,ny_ncID,ns_ncID/), zs_ncID)
-       istat = nf90_put_att(ncID, zs_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, zs_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, zs_ncID, attr_long_name, attr_desc)
+       istat = nf90_put_att(ncID, zs_ncID, attr_units_name,       attr_units)
        !
        ! Define time-dependent variables depending on each specie
        !
@@ -2801,90 +2797,97 @@ CONTAINS
           cat_code = MY_SPE%category(ispe)
           sblock   = SPE_TAG        (spe_code)
           !
+          select case(cat_code)
+          case(CAT_PARTICLE,CAT_AEROSOL)
+             !
+             attr_units_vol = 'g/m3'  
+             if(spe_code.eq.SPE_SO2) then
+                attr_units_col = 'DU'
+             else
+                attr_units_col = 'g/m2'
+             end if
+             attr_units_grn = 'kg/m2'
+             !
+          case(CAT_RADIONUCLIDE)
+             !
+             attr_units_vol = 'mBq/m3'
+             attr_units_col = 'mBq/m2'
+             attr_units_grn = 'Bq/m2'
+             !
+          end select
+          !
           !  1. CON
           if(out_con_total) then
              attr_desc  = TRIM(sblock)//'concentration on sigma planes'
-             attr_units = 'gr/m3'
              name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)
              istat = nf90_def_var(ncID, name_nc, NF90_MYTYPE, (/nx_ncID,ny_ncID,ns_ncID,nt_ncID/), con_ncID)
-             istat = nf90_put_att(ncID, con_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, con_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, con_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, con_ncID, attr_units_name,attr_units_vol)
           end if
           !
           !  2. CON_BIN
           if(out_con_bins) then
              attr_desc  = TRIM(sblock)//'concentration on sigma planes per bin'
-             attr_units = 'gr/m3'
              name_nc    = TRIM(sblock)//TRIM(c_bin_nc_name)
              nb_ncID    = nb_spe_ncID(spe_code)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, &
                                  (/nx_ncID,ny_ncID,ns_ncID,nb_ncID,nt_ncID/), con_bin_ncID)
-             istat = nf90_put_att(ncID, con_bin_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, con_bin_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, con_bin_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, con_bin_ncID, attr_units_name,attr_units_vol)
           end if
           !
           !  3. CON_YZ
           if((MY_CUTS%ncutx.gt.0)) then
              attr_desc  = TRIM(sblock)//'concentration on x-cut planes'
-             attr_units = 'gr/m3'
              name_nc    = TRIM(sblock)//TRIM(cutx_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/ny_ncID,nz_ncID,ncutx_ncID,nt_ncID/), cutx_ncID)
-             istat = nf90_put_att(ncID, cutx_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, cutx_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, cutx_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, cutx_ncID, attr_units_name,attr_units_vol)
           end if
           !
           !  4. CON_XZ
           if((MY_CUTS%ncuty.gt.0)) then
              attr_desc  = TRIM(sblock)//'concentration on y-cut planes'
-             attr_units = 'gr/m3'
              name_nc    = TRIM(sblock)//TRIM(cuty_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,nz_ncID,ncuty_ncID,nt_ncID/), cuty_ncID)
-             istat = nf90_put_att(ncID, cuty_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, cuty_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, cuty_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, cuty_ncID, attr_units_name,attr_units_vol)
           end if
           !
           !  5. CON_XY
           if((MY_CUTS%ncutz.gt.0)) then
              attr_desc  = TRIM(sblock)//'concentration on z-cut planes'
-             attr_units = 'gr/m3'
              name_nc    = TRIM(sblock)//TRIM(cutz_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,ncutz_ncID,nt_ncID/), cutz_ncID)
-             istat = nf90_put_att(ncID, cutz_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, cutz_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, cutz_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, cutz_ncID, attr_units_name,attr_units_vol)
           end if
           !
           !  6. FL
           if((MY_CUTS%nfl.gt.0)) then
              attr_desc  = TRIM(sblock)//'concentration at flight levels'
-             attr_units = 'gr/m3'
              name_nc    = TRIM(sblock)//TRIM(fl_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,nt_ncID/), fl_ncID)
-             istat = nf90_put_att(ncID, fl_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, fl_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, fl_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, fl_ncID, attr_units_name,attr_units_vol)
           end if
           !
           ! 7. COL_MASS
           if(out_col_load) then
              attr_desc  = TRIM(sblock)//'column mass load'
-             if(spe_code.eq.SPE_SO2) then
-                attr_units = 'DU'
-             else
-                attr_units = 'gr/m2'
-             end if
              name_nc    = TRIM(sblock)//TRIM(col_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), col_ncID)
-             istat = nf90_put_att(ncID, col_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, col_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, col_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, col_ncID, attr_units_name,attr_units_col)
           end if
           !
           ! 8. COL_MASS_PM
           if(out_col_load.and.(cat_code.ne.CAT_AEROSOL)) then
              attr_desc  = TRIM(sblock)//'column mass load PM bins'
-             attr_units = 'gr/m2'
              name_nc    = TRIM(sblock)//TRIM(pmc_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,npm_ncID,nt_ncID/), pmc_ncID)
-             istat = nf90_put_att(ncID, pmc_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, pmc_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, pmc_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, pmc_ncID, attr_units_name,attr_units_col)
           end if
           !
           ! 9. CLOUD_TOP
@@ -2893,121 +2896,55 @@ CONTAINS
              attr_units = 'm (a.s.l.)'
              name_nc    = TRIM(sblock)//TRIM(clh_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), clh_ncID)
-             istat = nf90_put_att(ncID, clh_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, clh_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, clh_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, clh_ncID, attr_units_name,attr_units)
           end if
           !
           !  10. GRN_LOAD
           if(out_grn_total) then
              attr_desc  = TRIM(sblock)//'ground mass load'
-             attr_units = 'kg/m2'
              name_nc    = TRIM(sblock)//TRIM(grn_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), grn_ncID)
-             istat = nf90_put_att(ncID, grn_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, grn_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, grn_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, grn_ncID, attr_units_name,attr_units_grn)
           end if
           !
           !  11. GRN_LOAD_BIN
           if(out_grn_bins) then
              attr_desc  = TRIM(sblock)//'ground mass load per bin'
-             attr_units = 'kg/m2'
              name_nc    = TRIM(sblock)//TRIM(grn_bin_nc_name)
              nb_ncID    = nb_spe_ncID(spe_code)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nb_ncID,nt_ncID/), grn_bin_ncID)
-             istat = nf90_put_att(ncID, grn_bin_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, grn_bin_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, grn_bin_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, grn_bin_ncID, attr_units_name,attr_units_grn)
           end if
           !
           !  12. WET_DEP
           if(out_wet_total) then
              attr_desc  = TRIM(sblock)//'mass removed by wet deposition'
-             attr_units = 'kg/m2'
              name_nc    = TRIM(sblock)//TRIM(wet_nc_name)
              istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), wet_ncID)
-             istat = nf90_put_att(ncID, wet_ncID, 'description', attr_desc)
-             istat = nf90_put_att(ncID, wet_ncID, 'units',       attr_units)
+             istat = nf90_put_att(ncID, wet_ncID, attr_long_name, attr_desc)
+             istat = nf90_put_att(ncID, wet_ncID, attr_units_name,attr_units_grn)
           end if
           !
        end do  ! ispe = 1,MY_SPE%nspe
        !
-       ! Put global attributes
+       ! 4. Put global attributes
        !
-       attr_title = 'FALL3D model results'
-       istat = nf90_put_att(ncID, NF90_GLOBAL, 'TITLE', attr_title)
-       !
-       attr_title = VERSION
-       istat = nf90_put_att(ncID, NF90_GLOBAL, 'CODE_VERSION', attr_title)
-       !
-       select case(MY_GRID%map_h)
-       case(MAP_H_CARTESIAN)
-          attr_title = 'cartesian'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_H', attr_title)
-          !
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_lonmin_name, MY_GRID%lonmin)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'XMAX', MY_GRID%lonmax)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'DX',   MY_GRID%dlon)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'YMIN', MY_GRID%latmin)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'YMAX', MY_GRID%latmax)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'DY',   MY_GRID%dlat)
-          !
-       case(MAP_H_SPHERICAL)
-          attr_title = 'spherical'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_H', attr_title)
-          !
-          istat = nf90_put_att(ncID, NF90_GLOBAL, attr_lonmin_name, MY_GRID%lonmin)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'LONMAX', MY_GRID%lonmax)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'DLON',   MY_GRID%dlon)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'LATMIN', MY_GRID%latmin)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'LATMAX', MY_GRID%latmax)
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'DLAT',   MY_GRID%dlat)
-          !
-       case(MAP_H_POLAR)
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Mapping not implemented yet'
-          !
-       case default
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Incorrect horizontal mapping'
-          !
-       end select
-       !
-       select case(MY_GRID%map_v)
-       case(MAP_V_CARTESIAN)
-          attr_title = 'cartesian'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_V', attr_title)
-          !
-       case(MAP_V_SIGMA_NO_DECAY)
-          attr_title = 'sigma_no_decay'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_V', attr_title)
-          !
-       case(MAP_V_SIGMA_LINEAR_DECAY)
-          attr_title = 'sigma_linear_decay'
-          istat = nf90_put_att(ncID, NF90_GLOBAL, 'MAP_V', attr_title)
-          !
-       case(MAP_V_SIGMA_EXPONENTIAL_DECAY)
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Mapping not implemented yet'
-          !
-       case default
-          MY_ERR%flag    = 1
-          MY_ERR%message = 'Incorrect vertical mapping'
-          !
-       end select
-       !
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_ztop_name, MY_GRID%X3max)
-       !
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_year_name , MY_TIME%start_year)
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_month_name, MY_TIME%start_month)
-       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_day_name  , MY_TIME%start_day)
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_conventions_name, 'CF-1.8')
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_references_name,  'NetCDF Climate and Forecast (CF) Metadata Conventions')
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_title_name,       'Model results')
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_source_name,      'FALL3D model version '//VERSION)
        !
        istat = nf90_enddef(ncID)
        !
-    end if  ! if(PARALLEL_IO.or.master)
+    end if  ! if(PARALLEL_IO.or.master_model)
     !
     if(.not.PARALLEL_IO) call parallel_bcast(istat,1,0)
     if(istat.ne.nf90_noerr) then
        MY_ERR%flag    = istat
-       MY_ERR%message = 'Error defining variables'
+       MY_ERR%message = nf90_strerror(istat)
        return
     end if
     !
@@ -3017,14 +2954,21 @@ CONTAINS
        !
        !  lon (or x)
        !
+       allocate(work1d(my_ibs:my_ibe))
+       do i = my_ibs,my_ibe
+          work1d(i) = MY_GRID%lonmin + (i-1)*MY_GRID%dlon
+       end do
        start1d=(/my_ibs/)
        count1d=(/my_ibe-my_ibs+1/)
-       istat = nf90_put_var(ncID, lon_ncID, MY_GRID%lon_c,start=start1d,count=count1d)
+       istat = nf90_var_par_access(ncID,lon_ncID,access = NF90_COLLECTIVE)
+       istat = nf90_put_var(ncID, lon_ncID, work1d,start=start1d,count=count1d)
+       deallocate(work1d)
        !
        !  lat (or y)
        !
        start1d=(/my_jbs/)
        count1d=(/my_jbe-my_jbs+1/)
+       istat = nf90_var_par_access(ncID,lat_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, lat_ncID, MY_GRID%lat_c,start=start1d,count=count1d)
        !
        ! sigma level
@@ -3035,6 +2979,7 @@ CONTAINS
        end do
        start1d=(/my_kbs/)
        count1d=(/my_kbe-my_kbs+1/)
+       istat = nf90_var_par_access(ncID,sig_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, sig_ncID, work1d,start=start1d,count=count1d)
        deallocate(work1d)
        !
@@ -3042,6 +2987,7 @@ CONTAINS
        !
        start1d=(/my_kbs/)
        count1d=(/my_kbe-my_kbs+1/)
+       istat = nf90_var_par_access(ncID,z_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, z_ncID  , MY_GRID%X3_c,start=start1d,count=count1d)
        !
        ! bins
@@ -3052,6 +2998,7 @@ CONTAINS
        end do
        start1d=(/1/)
        count1d=(/nbins/)
+       istat = nf90_var_par_access(ncID,bin_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, bin_ncID, iwork1d,start=start1d,count=count1d)
        deallocate(iwork1d)
        !
@@ -3063,31 +3010,50 @@ CONTAINS
           sblock   = SPE_TAG        (spe_code)
           !
           allocate(iwork1d(nbins_spe(spe_code)))
+          do i = 1,nbins_spe(spe_code)
+              iwork1d(i) = i
+          end do
           start1d=(/1/)
           count1d=(/nbins_spe(spe_code)/)
+          istat = nf90_var_par_access(ncID,bin_spe_ncID(spe_code),access = NF90_COLLECTIVE)
           istat = nf90_put_var(ncID, bin_spe_ncID(spe_code), iwork1d,start=start1d,count=count1d)
           deallocate(iwork1d)
        end do
        !
        !  cuts
        !
-       if(MY_CUTS%ncutx.gt.0) istat = nf90_put_var(ncID, xcut_ncID,   MY_CUTS%x_cut,  start=(/1/),count=(/MY_CUTS%ncutx/))
-       if(MY_CUTS%ncuty.gt.0) istat = nf90_put_var(ncID, ycut_ncID,   MY_CUTS%y_cut,  start=(/1/),count=(/MY_CUTS%ncuty/))
-       if(MY_CUTS%ncutz.gt.0) istat = nf90_put_var(ncID, zcut_ncID,   MY_CUTS%z_cut,  start=(/1/),count=(/MY_CUTS%ncutz/))
-       if(MY_CUTS%nfl  .gt.0) istat = nf90_put_var(ncID, zflcut_ncID, MY_CUTS%fl_cut, start=(/1/),count=(/MY_CUTS%nfl/))
+       if(MY_CUTS%ncutx.gt.0) then
+           istat = nf90_var_par_access(ncID,xcut_ncID,access = NF90_COLLECTIVE)
+           istat = nf90_put_var(ncID, xcut_ncID,   MY_CUTS%x_cut,  start=(/1/),count=(/MY_CUTS%ncutx/))
+       end if
+       if(MY_CUTS%ncuty.gt.0) then
+           istat = nf90_var_par_access(ncID,ycut_ncID,access = NF90_COLLECTIVE)
+           istat = nf90_put_var(ncID, ycut_ncID,   MY_CUTS%y_cut,  start=(/1/),count=(/MY_CUTS%ncuty/))
+       end if
+       if(MY_CUTS%ncutz.gt.0) then
+           istat = nf90_var_par_access(ncID,zcut_ncID,access = NF90_COLLECTIVE)
+           istat = nf90_put_var(ncID, zcut_ncID,   MY_CUTS%z_cut,  start=(/1/),count=(/MY_CUTS%ncutz/))
+       end if
+       if(MY_CUTS%nfl  .gt.0) then
+           istat = nf90_var_par_access(ncID,zflcut_ncID,access = NF90_COLLECTIVE)
+           istat = nf90_put_var(ncID, zflcut_ncID, MY_CUTS%fl_cut, start=(/1/),count=(/MY_CUTS%nfl/))
+       end if
        !
+       istat = nf90_var_par_access(ncID,npm_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, npm_ncID,  pm_value,       start=(/1/),count=(/npm/))
        !
        ! z coordinate of sigma layers
        !
        start3d=(/my_ibs,my_jbs,my_kbs/)
        count3d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1,my_kbe-my_kbs+1/)
+       istat = nf90_var_par_access(ncID,zs_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, zs_ncID, MY_GRID%z_c,start=start3d,count=count3d)
        !
        ! terrain
        !
        start2d=(/my_ibs,my_jbs/)
        count2d=(/my_ibe-my_ibs+1,my_jbe-my_jbs+1/)
+       istat = nf90_var_par_access(ncID,h_ncID,access = NF90_COLLECTIVE)
        istat = nf90_put_var(ncID, h_ncID, MY_GRID%h_c,start=start2d,count=count2d)
        !
        istat = nf90_close(ncID)
@@ -3096,7 +3062,7 @@ CONTAINS
        !
        !  lon (or x)
        !
-       if(master) then
+       if(master_model) then
           allocate(work1d(nbx))
           do i = 1,nbx
              work1d(i) = MY_GRID%lonmin + (i-1)*MY_GRID%dlon
@@ -3115,7 +3081,7 @@ CONTAINS
        !
        !  lat (or y)
        !
-       if(master) then
+       if(master_model) then
           allocate(work1d(nby))
           do j = 1,nby
              work1d(j) = MY_GRID%latmin + (j-1)*MY_GRID%dlat
@@ -3126,7 +3092,7 @@ CONTAINS
        !
        !  sigma levels
        !
-       if(master) then
+       if(master_model) then
           allocate(work1d(nbz))
           do k = 1,nbz
              work1d(k) = MY_GRID%gl_sigma(k)
@@ -3137,7 +3103,7 @@ CONTAINS
        !
        !  X3 coordinate
        !
-       if(master) then
+       if(master_model) then
           allocate(work1d(nbz))
           do k = 1,nbz
              work1d(k) = MY_GRID%gl_sigma(k)*MY_GRID%X3max
@@ -3148,7 +3114,7 @@ CONTAINS
        !
        !  bins and species bins
        !
-       if(master) then
+       if(master_model) then
           allocate(iwork1d(nbins))
           do i = 1,nbins
              iwork1d(i) = i
@@ -3167,32 +3133,32 @@ CONTAINS
        !
        !  cuts
        !
-       if(master.and.MY_CUTS%ncutx.gt.0) istat = nf90_put_var(ncID, xcut_ncID,   &
+       if(master_model.and.MY_CUTS%ncutx.gt.0) istat = nf90_put_var(ncID, xcut_ncID,   &
             MY_CUTS%x_cut,  start=(/1/),count=(/MY_CUTS%ncutx/))
-       if(master.and.MY_CUTS%ncuty.gt.0) istat = nf90_put_var(ncID, ycut_ncID,   &
+       if(master_model.and.MY_CUTS%ncuty.gt.0) istat = nf90_put_var(ncID, ycut_ncID,   &
             MY_CUTS%y_cut,  start=(/1/),count=(/MY_CUTS%ncuty/))
-       if(master.and.MY_CUTS%ncutz.gt.0) istat = nf90_put_var(ncID, zcut_ncID,   &
+       if(master_model.and.MY_CUTS%ncutz.gt.0) istat = nf90_put_var(ncID, zcut_ncID,   &
             MY_CUTS%z_cut,  start=(/1/),count=(/MY_CUTS%ncutz/))
-       if(master.and.MY_CUTS%nfl  .gt.0) istat = nf90_put_var(ncID, zflcut_ncID, &
+       if(master_model.and.MY_CUTS%nfl  .gt.0) istat = nf90_put_var(ncID, zflcut_ncID, &
             MY_CUTS%fl_cut, start=(/1/),count=(/MY_CUTS%nfl/))
-       if(master)                        istat = nf90_put_var(ncID, npm_ncID,    &
+       if(master_model)                        istat = nf90_put_var(ncID, npm_ncID,    &
             pm_value,       start=(/1/),count=(/npm/))
        !
        ! z coordinate of sigma layers
        !
-       if(master) then
+       if(master_model) then
           allocate(work3d(nbx,nby,nbz))
        else
           allocate(work3d(1,1,1))
        end if
        call domain_gather_corner_points_0halo(work3d,nbx,nby,nbz,MY_GRID%z_c)
-       if(master) then
+       if(master_model) then
           istat = nf90_put_var(ncID, zs_ncID, work3d, start=(/1,1,1/),count=(/nbx,nby,nbz/))
        end if
        !
        ! terrain
        !
-       if(master) then
+       if(master_model) then
           allocate(work2d(nbx,nby))
           work2d(:,:) = work3d(:,:,1)
           istat = nf90_put_var(ncID, h_ncID, work2d, start=(/1,1/),count=(/nbx,nby/))
@@ -3200,7 +3166,7 @@ CONTAINS
        end if
        deallocate(work3d)
        !
-       if(master) then
+       if(master_model) then
           istat = nf90_close(ncID)
        end if
        !
@@ -3268,7 +3234,7 @@ CONTAINS
     real(rp), allocatable :: my_cs    (:,:,:,:)     ! at mass points (scaled)
     real(rp), allocatable :: my_cc    (:,:,:,:)     ! at corners
     real(rp), allocatable :: my_ac    (:,:,:  )     ! at corners
-    real(rp), allocatable :: my_awetc (:,:    )     ! at corners
+    real(rp), allocatable :: my_awetc (:,:,:  )     ! at corners
     !
     integer(ip), save, allocatable :: indexz(:,:,:)
     real(rp),    save, allocatable :: shapez(:,:,:)
@@ -3300,13 +3266,13 @@ CONTAINS
     bin_spe(:) = MY_TRA%MY_BIN%bin_spe(:)
     !
     !*** If necessary, compute interpolation factors for cuts (including FLs). Note that this is done
-    !*** by master on a global domain because mesh partitions in sigma and z levels are different
+    !*** by Master on a global domain because mesh partitions in sigma and z levels are different
     !
     if( (ipass.eq.1).and.((MY_CUTS%ncutx.gt.0).or.(MY_CUTS%ncuty.gt.0).or.(MY_CUTS%ncutz.gt.0).or.(MY_CUTS%nfl.gt.0)) ) then
        !
        !  Get global zc
        !
-       if(master) then
+       if(master_model) then
           allocate(gl_zc(nbx,nby,nbz))
        else
           allocate(gl_zc(1,1,1))
@@ -3316,7 +3282,7 @@ CONTAINS
        !  Get factors to interpolate from the postprocess mesh on z levels to the computational
        !  mesh on sigma levels
        !
-       if(master) then
+       if(master_model) then
           !
           allocate(indexz(nbx,nby,nbz))
           allocate(shapez(nbx,nby,nbz))
@@ -3432,10 +3398,6 @@ CONTAINS
     !
     !*** Get values of my tracer concentration at cell corner points (my_cc in gr/m3)
     !
-    call domain_swap_mass_points_2halo_x (my_cs)
-    call domain_swap_mass_points_2halo_y (my_cs)
-    call domain_swap_mass_points_2halo_z (my_cs)
-    !
     allocate(my_cc(my_ibs:my_ibe,my_jbs:my_jbe,my_kbs:my_kbe,1:nbins))
     do ib = 1,nbins
        call Grid_p2c(my_cs(:,:,:,ib),my_cc(:,:,:,ib))
@@ -3449,13 +3411,17 @@ CONTAINS
        call Grid_p2c_2D(MY_TRA%my_acum(:,:,ib),my_ac(:,:,ib))
     end do
     !
-    !*** Get wet deposition at corner points (my_wetc in kg/m2)
+    !*** Get wet deposition at corner points (my_awetc in kg/m2)
     !
-    call domain_swap_mass_points_2halo_2Dx ( MY_TRA%my_awet )
-    call domain_swap_mass_points_2halo_2Dx ( MY_TRA%my_awet )
+    allocate(my_awetc(my_ibs:my_ibe,my_jbs:my_jbe,1:nbins))
+    do ib = 1,nbins    
+       call Grid_p2c_2D(MY_TRA%my_awet(:,:,ib),my_awetc(:,:,ib))
+    end do
     !
-    allocate(my_awetc(my_ibs:my_ibe,my_jbs:my_jbe))
-    call Grid_p2c_2D(MY_TRA%my_awet(:,:),my_awetc(:,:))
+    !*** Add the contribution of wet deposition to ground accumulation, which includes
+    !*** both dry and wet (not that wet part is 0 if MY_MOD%wet_deposition = .false.)
+    !
+    my_ac = my_ac + my_awetc
     !
     !*** If necessary, write the tracking points files
     !
@@ -3468,8 +3434,12 @@ CONTAINS
        mode_flag = IOR(NF90_NETCDF4, NF90_CLASSIC_MODEL)
        mode_flag = IOR(mode_flag, NF90_MPIIO)
        mode_flag = IOR(mode_flag, NF90_WRITE)
-       istat     = nf90_open_par(TRIM(nc_file), mode_flag , comm=COMM_WORLD, info = MPI_INFO_NULL, ncid=ncID)
-    else if(master) then
+       istat     = nf90_open_par(TRIM(nc_file),        &
+                                 mode_flag,            &
+                                 comm = COMM_MODEL,    &
+                                 info = MPI_INFO_NULL, &
+                                 ncid = ncID)
+    else if(master_model) then
        mode_flag = NF90_WRITE
        istat = nf90_open(TRIM(nc_file), mode_flag, ncID)
     end if
@@ -3484,7 +3454,7 @@ CONTAINS
        istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
        istat = nf90_var_par_access(ncID, tim_ncID, access=NF90_COLLECTIVE)
        istat = nf90_put_var(ncID,tim_ncID,INT(MY_TIME%time),start=(/ipass/))
-    else if(master) then
+    else if(master_model) then
        istat = nf90_inq_varid(ncID,tim_nc_name,tim_ncID)
        istat = nf90_put_var(ncID,tim_ncID,INT(MY_TIME%time),start=(/ipass/))
     end if
@@ -3500,7 +3470,7 @@ CONTAINS
        istat = nf90_inq_varid(ncID,date_nc_name,date_ncID)
        istat = nf90_var_par_access(ncID, date_ncID, access=NF90_COLLECTIVE)
        istat = nf90_put_var(ncID,date_ncID,out_date,start=(/1,ipass/))
-    else if(master) then
+    else if(master_model) then
        istat = nf90_inq_varid(ncID,date_nc_name,date_ncID)
        istat = nf90_put_var(ncID,date_ncID,out_date,start=(/1,ipass/))
     end if
@@ -3543,14 +3513,14 @@ CONTAINS
            !
          else   ! SERIAL_IO
            !
-           if(master) then
+           if(master_model) then
               allocate(gl_work3d(nbx,nby,nbz))
            else
               allocate(gl_work3d(1,1,1))
            end if
            call domain_gather_corner_points_0halo(gl_work3d,nbx,nby,nbz,my_work3d)
            !
-           if(master) then
+           if(master_model) then
              !
              start4d=(/1,1,1,ipass/)
              count4d=(/nbx,nby,nbz,1/)
@@ -3600,7 +3570,7 @@ CONTAINS
           !
        else   ! SERIAL_IO
           !
-          if(master) then
+          if(master_model) then
              allocate(gl_work4d(nbx,nby,nbz,nbins_spe(spe_code)))
           else
              allocate(gl_work4d(1,1,1,1))
@@ -3614,7 +3584,7 @@ CONTAINS
              end if
           end do
           !
-          if(master) then
+          if(master_model) then
              !
              nb_spe = nbins_spe(spe_code)
              start5d=(/1,1,1,1,ipass/)
@@ -3673,14 +3643,15 @@ CONTAINS
            !
         else   ! SERIAL_IO
            !
-           if(master) then
+           if(master_model) then
              allocate(gl_work2d(nbx,nby))
+             call domain_gather_corner_points_0halo_2D(gl_work2d,nbx,nby,my_work2d)
            else
              allocate(gl_work2d(1,1))
+             call domain_gather_corner_points_0halo_2D(gl_work2d,1,1,my_work2d)
            end if
-           call domain_gather_corner_points_0halo_2D(gl_work2d,nbx,nby,my_work2d)
            !
-           if(master) then
+           if(master_model) then
              !
              start3d=(/1,1,ipass/)
              count3d=(/nbx,nby,1/)
@@ -3747,7 +3718,7 @@ CONTAINS
           !
          else   ! SERIAL_IO
           !
-          if(master) then
+          if(master_model) then
              allocate(gl_work3d(nbx,nby,npm))
           else
              allocate(gl_work3d(1,1,1))
@@ -3756,7 +3727,7 @@ CONTAINS
              call domain_gather_corner_points_0halo_2D(gl_work3d(:,:,ipm),nbx,nby,my_work3d2(:,:,ipm))
           end do
           !
-          if(master) then
+          if(master_model) then
              !
              start4d=(/1,1,1,ipass/)
              count4d=(/nbx,nby,npm,1/)
@@ -3831,14 +3802,14 @@ CONTAINS
           !
         else   ! SERIAL_IO
           !
-          if(master) then
+          if(master_model) then
              allocate(gl_work2d(nbx,nby))
           else
              allocate(gl_work2d(1,1))
           end if
           call domain_gather_corner_points_0halo_2D(gl_work2d,nbx,nby,my_work2d)
           !
-          if(master) then
+          if(master_model) then
              !
              start3d=(/1,1,ipass/)
              count3d=(/nbx,nby,1/)
@@ -3888,14 +3859,14 @@ CONTAINS
           !
         else   ! SERIAL_IO
           !
-          if(master) then
+          if(master_model) then
              allocate(gl_work2d(nbx,nby))
           else
              allocate(gl_work2d(1,1))
           end if
           call domain_gather_corner_points_0halo_2D(gl_work2d,nbx,nby,my_work2d)
           !
-          if(master) then
+          if(master_model) then
              !
              start3d=(/1,1,ipass/)
              count3d=(/nbx,nby,1/)
@@ -3946,7 +3917,7 @@ CONTAINS
           !
          else   ! SERIAL_IO
           !
-          if(master) then
+          if(master_model) then
              allocate(gl_work3d(nbx,nby,nbins_spe(spe_code)))
           else
              allocate(gl_work3d(1,1,1))
@@ -3959,7 +3930,7 @@ CONTAINS
              end if
           end do
           !
-          if(master) then
+          if(master_model) then
              !
              start4d=(/1,1,1,ipass/)
              count4d=(/nbx,nby,nbins_spe(spe_code),1/)
@@ -3979,10 +3950,16 @@ CONTAINS
       !*** 12. WET : compute and output total species mass removed by wet deposition (all species bins)
       !
       if(out_wet_total) then
-       !
-       call parallel_sum(my_awetc,COMM_GRIDZ)  ! only along z
-       !
-       if(PARALLEL_IO) then
+        !
+        allocate(my_work2d(my_ibs:my_ibe,my_jbs:my_jbe))
+        my_work2d = 0.0_rp
+        do ib = 1,nbins
+           if(bin_spe(ib).eq.spe_code) my_work2d(:,:) = my_work2d(:,:) + my_awetc(:,:,ib)
+        end do
+        !
+        call parallel_sum(my_work2d,COMM_GRIDZ)  ! only along z
+        !
+        if(PARALLEL_IO) then
           !
           my_nbx = my_ibe-my_ibs+1
           my_nby = my_jbe-my_jbs+1
@@ -3991,7 +3968,7 @@ CONTAINS
           count3d=(/my_nbx,my_nby,1/)
           !
           allocate(gl_work2d(my_nbx,my_nby))
-          gl_work2d(1:my_nbx,1:my_nby) = my_awetc(my_ibs:my_ibe,my_jbs:my_jbe)
+          gl_work2d(1:my_nbx,1:my_nby) = my_work2d(my_ibs:my_ibe,my_jbs:my_jbe)
           !
           name_nc = TRIM(sblock)//TRIM(wet_nc_name)
           istat = nf90_inq_varid(ncID,name_nc,wet_ncID)
@@ -4000,16 +3977,16 @@ CONTAINS
           !
           deallocate(gl_work2d)
           !
-       else   ! SERIAL_IO
+        else   ! SERIAL_IO
           !
-          if(master) then
+          if(master_model) then
              allocate(gl_work2d(nbx,nby))
           else
              allocate(gl_work2d(1,1))
           end if
-          call domain_gather_corner_points_0halo_2D(gl_work2d,nbx,nby,my_awetc)
+          call domain_gather_corner_points_0halo_2D(gl_work2d,nbx,nby,my_work2d)
           !
-          if(master) then
+          if(master_model) then
              !
              start3d=(/1,1,ipass/)
              count3d=(/nbx,nby,1/)
@@ -4021,6 +3998,8 @@ CONTAINS
           end if
           deallocate(gl_work2d)
        end if
+       !
+       deallocate(my_work2d)
        !
      end if ! if(out_wet_total)
      !
@@ -4036,7 +4015,7 @@ CONTAINS
        !
        !  Get global c on sigma levels
        !
-       if(master) then
+       if(master_model) then
           allocate(gl_c(nbx,nby,nbz))
        else
           allocate(gl_c(1,1,1))
@@ -4044,9 +4023,9 @@ CONTAINS
        call domain_gather_corner_points_0halo(gl_c,nbx,nby,nbz,my_work3d)
        deallocate(my_work3d)
        !
-       !  Get global c on z levels (master only)
+       !  Get global c on z levels (Master only)
        !
-       if(master) then
+       if(master_model) then
           allocate(gl_cz(nbx,nby,nbz))
           do k = 1,nbz
              do j = 1,nby
@@ -4065,10 +4044,10 @@ CONTAINS
        deallocate(gl_c)
     end if
     !
-    !*** Compute and output cuts along x (master only)
+    !*** Compute and output cuts along x (Master only)
     !
     if((MY_CUTS%ncutx.gt.0)) then
-       if(master) then
+       if(master_model) then
           !
           allocate(gl_work3d(nby,nbz,MY_CUTS%ncutx))
           !
@@ -4088,8 +4067,8 @@ CONTAINS
        if(PARALLEL_IO) then
           !
           start4d=(/1,1,1,ipass/)
-          if(master) then
-             count4d=(/nby,nbz,MY_CUTS%ncutx,1/)  ! only master has values
+          if(master_model) then
+             count4d=(/nby,nbz,MY_CUTS%ncutx,1/)  ! only Master has values
           else
              count4d=(/0,0,0,0/)
           end if
@@ -4099,7 +4078,7 @@ CONTAINS
           istat = nf90_var_par_access(ncID, cutx_ncID, access=NF90_COLLECTIVE)
           istat = nf90_put_var(ncID, cutx_ncID, gl_work3d, start=start4d,count=count4d)
           !
-       else if(master) then
+       else if(master_model) then
           !
           start4d=(/1,1,1,ipass/)
           count4d=(/nby,nbz,MY_CUTS%ncutx,1/)
@@ -4114,10 +4093,10 @@ CONTAINS
        !
     end if  ! if(MY_CUTS%ncutx.gt.0)
     !
-    !*** Compute and output cuts along y (master only)
+    !*** Compute and output cuts along y (Master only)
     !
     if((MY_CUTS%ncuty.gt.0)) then
-       if(master) then
+       if(master_model) then
           !
           allocate(gl_work3d(nbx,nbz,MY_CUTS%ncuty))
           !
@@ -4137,8 +4116,8 @@ CONTAINS
        if(PARALLEL_IO) then
           !
           start4d=(/1,1,1,ipass/)
-          if(master) then
-             count4d=(/nbx,nbz,MY_CUTS%ncuty,1/)  ! only master has values
+          if(master_model) then
+             count4d=(/nbx,nbz,MY_CUTS%ncuty,1/)  ! only Master has values
           else
              count4d=(/0,0,0,0/)
           end if
@@ -4148,7 +4127,7 @@ CONTAINS
           istat = nf90_var_par_access(ncID, cuty_ncID, access=NF90_COLLECTIVE)
           istat = nf90_put_var(ncID, cuty_ncID, gl_work3d, start=start4d,count=count4d)
           !
-       else if(master) then
+       else if(master_model) then
           !
           start4d=(/1,1,1,ipass/)
           count4d=(/nbx,nbz,MY_CUTS%ncuty,1/)
@@ -4162,10 +4141,10 @@ CONTAINS
        !
     end if   ! if(MY_CUTS%ncuty.gt.0)
     !
-    !*** Compute and output cuts along z (master only)
+    !*** Compute and output cuts along z (Master only)
     !
     if((MY_CUTS%ncutz.gt.0)) then
-       if(master) then
+       if(master_model) then
           !
           allocate(gl_work3d(nbx,nby,MY_CUTS%ncutz))
           !
@@ -4185,8 +4164,8 @@ CONTAINS
        if(PARALLEL_IO) then
           !
           start4d=(/1,1,1,ipass/)
-          if(master) then
-             count4d=(/nbx,nby,MY_CUTS%ncutz,1/) ! only master has values
+          if(master_model) then
+             count4d=(/nbx,nby,MY_CUTS%ncutz,1/) ! only Master has values
           else
              count4d=(/0,0,0,0/)
           end if
@@ -4196,7 +4175,7 @@ CONTAINS
           istat = nf90_var_par_access(ncID, cutz_ncID, access=NF90_COLLECTIVE)
           istat = nf90_put_var(ncID, cutz_ncID, gl_work3d, start=start4d,count=count4d)
           !
-       else if(master) then
+       else if(master_model) then
           !
           start4d=(/1,1,1,ipass/)
           count4d=(/nbx,nby,MY_CUTS%ncutz,1/)
@@ -4210,10 +4189,10 @@ CONTAINS
        !
     end if  ! if(MY_CUTS%ncutz.gt.0)
     !
-    !*** Compute and output cuts along FLs (master only)
+    !*** Compute and output cuts along FLs (Master only)
     !
     if((MY_CUTS%nfl.gt.0)) then
-       if(master) then
+       if(master_model) then
           !
           allocate(gl_work3d(nbx,nby,MY_CUTS%nfl))
           !
@@ -4233,8 +4212,8 @@ CONTAINS
        if(PARALLEL_IO) then
           !
           start4d=(/1,1,1,ipass/)
-          if(master) then
-             count4d=(/nbx,nby,MY_CUTS%nfl,1/) ! only master has values
+          if(master_model) then
+             count4d=(/nbx,nby,MY_CUTS%nfl,1/) ! only Master has values
           else
              count4d=(/0,0,0,0/)
           end if
@@ -4244,7 +4223,7 @@ CONTAINS
           istat = nf90_var_par_access(ncID, fl_ncID, access=NF90_COLLECTIVE)
           istat = nf90_put_var(ncID, fl_ncID, gl_work3d, start=start4d,count=count4d)
           !
-       else if(master) then
+       else if(master_model) then
           !
           start4d=(/1,1,1,ipass/)
           count4d=(/nbx,nby,MY_CUTS%nfl,1/)
@@ -4258,10 +4237,10 @@ CONTAINS
        !
      end if  ! if(MY_CUTS%nfl.gt.0)
      !
-     !*** If necessary, master deallocates for next species
+     !*** If necessary, Master deallocates for next species
      !
      if( ((MY_CUTS%ncutx.gt.0).or.(MY_CUTS%ncuty.gt.0).or.(MY_CUTS%ncutz.gt.0).or.(MY_CUTS%nfl.gt.0)) ) then
-        if(master) deallocate(gl_cz)
+        if(master_model) deallocate(gl_cz)
      end if
      !
      !
@@ -4269,14 +4248,14 @@ CONTAINS
     !
     !*** Close file
     !
-    if(PARALLEL_IO.or.master) then
+    if(PARALLEL_IO.or.master_model) then
        istat = nf90_close(ncID)
     end if
     !
     return
   end subroutine nc_IO_out_res
   !
-  !>   @dbrief
+  !>   @brief
   !>   Writes the tracking point files
   !
   subroutine nc_IO_out_pts(MY_FILES,MY_TIME,MY_SPE,MY_OUT,MY_BIN,my_cc,my_ac,MY_ERR)
@@ -4305,7 +4284,7 @@ CONTAINS
     character(len=s_name) :: spe_name
     integer(ip)           :: iyr,imo,idy,ihr,imi,ise
     integer(ip)           :: nbins,npts,ipts,ibin,i,j,k
-    integer(ip)           :: ispe, spe_code, jb
+    integer(ip)           :: ispe, spe_code, cat_code, jb
     integer(ip), save     :: ipass = 0
     real(rp)              :: time,s,t,w,st,val(4)
     real(rp)              :: acum,ctot,pm05,pm10,pm20
@@ -4336,8 +4315,9 @@ CONTAINS
     !
     do ispe = 1,MY_SPE%nspe
        !
-       spe_code = MY_SPE%code(ispe)
-       spe_name = MY_SPE%name(ispe)
+       spe_code = MY_SPE%code    (ispe)
+       cat_code = MY_SPE%category(ispe)
+       spe_name = MY_SPE%name    (ispe)
        !
        do ipts = 1,npts
        !
@@ -4346,7 +4326,7 @@ CONTAINS
        !
        !*** The processor hosting the point interpolates
        !
-       if(mpime.eq.MY_OUT%MY_PTS%mproc(ipts)) then
+       if(mype_model.eq.MY_OUT%MY_PTS%mproc(ipts)) then
           i = MY_OUT%MY_PTS%ipts(ipts)
           j = MY_OUT%MY_PTS%jpts(ipts)
           k = MY_OUT%MY_PTS%kpts(ipts)
@@ -4384,26 +4364,40 @@ CONTAINS
            !
         end if
         !
-        call parallel_sum(my_cp, COMM_WORLD)
-        call parallel_sum(my_ap, COMM_WORLD)
+        call parallel_sum(my_cp, COMM_MODEL)
+        call parallel_sum(my_ap, COMM_MODEL)
        !
        !*** Master prints the file
        !
-       if(master) then
+       if(master_model) then
           !
           if(ipass.eq.0) then
              open(90,file=TRIM(fname),status='unknown')
              write(90,10) TRIM(MY_OUT%MY_PTS%name_pts(ipts)), &
-                  MY_OUT%MY_PTS%xpts    (ipts),  &
-                  MY_OUT%MY_PTS%ypts    (ipts)
+                               MY_OUT%MY_PTS%xpts    (ipts),  &
+                               MY_OUT%MY_PTS%ypts    (ipts)
 10           format(&
                   'Tracking point file for : ',a              ,/, &
                   'Coordinates             : ',f13.4,1x,f13.4 ,/, &
                   '                          '                ,/, &
                   ' DDMMYY_HH:MM       load        conc.      conc.PM5      conc.PM10    conc.PM20 ',/, &
-                  '                   ground       ground      ground        ground       ground   ',/, &
+                  '                   ground       ground      ground        ground       ground   ')
+             select case(cat_code)
+             case(CAT_PARTICLE,CAT_AEROSOL)
+               !
+               write(90,11)
+11             format(&
                   '   (--)            (kg/m2)      (g/m3)       (g/m3)       (g/m3)       (g/m3)   ',/, &
                   '--------------------------------------------------------------------------------')
+               !
+             case(CAT_RADIONUCLIDE)
+               !
+               write(90,12)
+12             format(&
+                  '   (--)            (Bq/m2)      (mBq/m3)     (mBq/m3)     (mBq/m3)     (mBq/m3) ',/, &
+                  '--------------------------------------------------------------------------------')
+               !              
+             end select
           else
              open(90,file=TRIM(fname),status='old',position='append')
           end if
@@ -4526,8 +4520,12 @@ CONTAINS
        mode_flag = IOR(NF90_NETCDF4, NF90_CLASSIC_MODEL)
        mode_flag = IOR(mode_flag, NF90_MPIIO)
        mode_flag = IOR(mode_flag, NF90_CLOBBER)
-       istat     = nf90_create_par(TRIM(nc_file), cmode=mode_flag , comm=COMM_WORLD, info = MPI_INFO_NULL, ncid=ncID)
-     else if(master) then
+       istat     = nf90_create_par(TRIM(nc_file),         &
+                                   cmode = mode_flag ,    &
+                                   comm  = COMM_MODEL,    &
+                                   info  = MPI_INFO_NULL, &
+                                   ncid  = ncID)
+     else if(master_model) then
        mode_flag = IOR(NF90_CLOBBER,NF90_NETCDF4)
        istat     = nf90_create(TRIM(nc_file),cmode=mode_flag, ncid=ncID)
     end if
@@ -4536,26 +4534,19 @@ CONTAINS
     istat     = nf90_create(TRIM(nc_file),cmode=mode_flag, ncid=ncID)
 #endif
     !
-    !*** Check errors
+    !*** Check errors creating file
     !
-    if(PARALLEL_IO.and.istat.ne.0) then
-       MY_ERR%flag    = istat
-       MY_ERR%source  = 'nc_IO_out_rst'
-       MY_ERR%message = nf90_strerror(istat)
-       return
-    else
-       call parallel_bcast(istat,1,0)
-       if(istat.ne.0) then
-          MY_ERR%flag    = istat
-          MY_ERR%source  = 'nc_IO_out_rst'
-          MY_ERR%message = nf90_strerror(istat)
-          return
-       end if
+    if(.not.PARALLEL_IO) call parallel_bcast(istat,1,0)
+    if(istat.ne.nf90_noerr) then
+        MY_ERR%flag    = istat
+        MY_ERR%source  = 'nc_IO_out_rst'
+        MY_ERR%message = nf90_strerror(istat)
+        return
     end if
     !
     !*** File dimensions
     !
-    if(PARALLEL_IO.or.master) then
+    if(PARALLEL_IO.or.master_model) then
        !
        !  Define dimensions
        !
@@ -4572,14 +4563,14 @@ CONTAINS
        attr_desc  = 'scaled tracer concentration'
        attr_units = 'kg/m3'
        istat = nf90_def_var(ncID, c_total_nc_name ,NF90_MYTYPE, (/nx2_ncID,ny2_ncID,nz2_ncID,nb_ncID/), con_ncID)
-       istat = nf90_put_att(ncID, con_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, con_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, con_ncID, attr_long_name, attr_desc)
+       istat = nf90_put_att(ncID, con_ncID, attr_units_name,attr_units)
        !
        attr_desc  = 'scaled deposit load'
        attr_units = 'kg/m2'
        istat = nf90_def_var(ncID, grn_nc_name ,NF90_MYTYPE, (/nx2_ncID,ny2_ncID,nb_ncID/), grn_ncID)
-       istat = nf90_put_att(ncID, grn_ncID, 'description', attr_desc)
-       istat = nf90_put_att(ncID, grn_ncID, 'units',       attr_units)
+       istat = nf90_put_att(ncID, grn_ncID, attr_long_name, attr_desc)
+       istat = nf90_put_att(ncID, grn_ncID, attr_units_name,attr_units)
        !
        !  Put global attributes
        !
@@ -4663,7 +4654,7 @@ CONTAINS
     if(.not.PARALLEL_IO) call parallel_bcast(istat,1,0)
     if(istat.ne.nf90_noerr) then
        MY_ERR%flag    = istat
-       MY_ERR%message = 'Error defining variables'
+       MY_ERR%message = nf90_strerror(istat)
        return
     end if
     !
@@ -4710,7 +4701,7 @@ CONTAINS
        !
        !  CON
        !
-       if(master) then
+       if(master_model) then
           allocate(gl_work3d(-1:npx+2,-1:npy+2,-1:npz+2))
           allocate(gl_work4d(npx_2h,npy_2h,npz_2h,nbins))
        else
@@ -4719,10 +4710,10 @@ CONTAINS
        !
        do ibin = 1,nbins
           call domain_gather_mass_points_2halo(gl_work3d(:,:,:),npx,npy,npz,MY_TRA%my_c(:,:,:,ibin))
-          if(master) gl_work4d(1:npx_2h,1:npy_2h,1:npz_2h,ibin) = gl_work3d(-1:npx+2,-1:npy+2,-1:npz+2)
+          if(master_model) gl_work4d(1:npx_2h,1:npy_2h,1:npz_2h,ibin) = gl_work3d(-1:npx+2,-1:npy+2,-1:npz+2)
        end do
        !
-       if(master) then
+       if(master_model) then
           !
           start4d=(/1,1,1,1/)
           count4d=(/npx_2h,npy_2h,npz_2h,nbins/)
@@ -4736,7 +4727,7 @@ CONTAINS
        !
        !  LOAD
        !
-       if(master) then
+       if(master_model) then
           allocate(gl_work2d(-1:npx+2,-1:npy+2))
           allocate(gl_work3d(npx_2h,npy_2h,nbins))
        else
@@ -4745,10 +4736,10 @@ CONTAINS
        !
        do ibin = 1,nbins
           call domain_gather_mass_points_2halo_2D(gl_work2d(:,:),npx,npy,my_acum(:,:,ibin))
-          if(master) gl_work3d(1:npx_2h,1:npy_2h,ibin) = gl_work2d(-1:npx+2,-1:npy+2)
+          if(master_model) gl_work3d(1:npx_2h,1:npy_2h,ibin) = gl_work2d(-1:npx+2,-1:npy+2)
        end do
        !
-       if(master) then
+       if(master_model) then
           !
           start3d=(/1,1,1/)
           count3d=(/npx_2h,npy_2h,nbins/)
@@ -4760,7 +4751,7 @@ CONTAINS
        end if
        deallocate(gl_work2d)
        !
-       if(master) then
+       if(master_model) then
           istat = nf90_close(ncID)
        end if
        !
@@ -4835,11 +4826,13 @@ CONTAINS
     !
 #if defined WITH_MPI
     if(PARALLEL_IO) then
-       mode_flag = IOR(NF90_NETCDF4, NF90_CLASSIC_MODEL)
-       mode_flag = IOR(mode_flag, NF90_MPIIO)
-       mode_flag = IOR(mode_flag, NF90_NOWRITE)
-       istat     = nf90_open_par(TRIM(nc_file), mode_flag , comm=COMM_WORLD, info = MPI_INFO_NULL, ncid=ncID)
-    else if(master) then
+       mode_flag = IOR(NF90_NOWRITE, NF90_MPIIO)
+       istat     = nf90_open_par(TRIM(nc_file),         &
+                                 cmode = mode_flag,     &
+                                 comm  = COMM_MODEL,    &
+                                 info  = MPI_INFO_NULL, &
+                                 ncid  = ncID)
+    else if(master_model) then
        mode_flag = NF90_NOWRITE
        istat = nf90_open(TRIM(nc_file), mode_flag, ncID)
     end if
@@ -4847,16 +4840,19 @@ CONTAINS
     mode_flag = NF90_NOWRITE
     istat = nf90_open(TRIM(nc_file), mode_flag, ncID)
 #endif
-    MY_ERR%flag = istat
-    call parallel_bcast(MY_ERR%flag,1,0)
-    if(MY_ERR%flag.ne.0) then
-       MY_ERR%message = 'Unable to open restart file '//TRIM(nc_file)
-       call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
+    !
+    !*** Check errors opening file
+    !
+    if(.not.PARALLEL_IO) call parallel_bcast(istat,1,0)
+    if(istat.ne.nf90_noerr) then
+        MY_ERR%flag    = istat
+        MY_ERR%message = nf90_strerror(istat)
+        return
     end if
     !
     !*** Master checks for consistency in dimensions
     !
-    if(master) then
+    if(master_model) then
        istat = nf90_inq_dimid        (ncID, nx_nc_name, nx_ncID)
        istat = nf90_inquire_dimension(ncID, nx_ncID, dim_name, ival)
        if(ival.ne.npx) MY_ERR%flag = 1
@@ -4867,7 +4863,7 @@ CONTAINS
        call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
     end if
     !
-    if(master) then
+    if(master_model) then
        istat = nf90_inq_dimid        (ncID, ny_nc_name, ny_ncID)
        istat = nf90_inquire_dimension(ncID, ny_ncID, dim_name, ival)
        if(ival.ne.npy) MY_ERR%flag = 1
@@ -4878,7 +4874,7 @@ CONTAINS
        call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
     end if
     !
-    if(master) then
+    if(master_model) then
        istat = nf90_inq_dimid        (ncID, nz_nc_name, nz_ncID)
        istat = nf90_inquire_dimension(ncID, nz_ncID, dim_name, ival)
        if(ival.ne.npz) MY_ERR%flag = 1
@@ -4889,7 +4885,7 @@ CONTAINS
        call task_runend(TASK_RUN_FALL3D, MY_FILES, MY_ERR)
     end if
     !
-    if(master) then
+    if(master_model) then
        istat = nf90_inq_dimid        (ncID, nb_nc_name, nb_ncID)
        istat = nf90_inquire_dimension(ncID, nb_ncID, dim_name, ival)
        if(ival.ne.nbins) MY_ERR%flag = 1
@@ -4906,7 +4902,7 @@ CONTAINS
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_lonmin_name, rval)
        if(rval.ne.MY_GRID%lonmin) MY_ERR%flag = 1
     else
-       if(master) then
+       if(master_model) then
           istat = nf90_get_att(ncID, NF90_GLOBAL, attr_lonmin_name, rval)
           if(rval.ne.MY_GRID%lonmin) MY_ERR%flag = 1
        end if
@@ -4921,7 +4917,7 @@ CONTAINS
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_lonmax_name, rval)
        if(rval.ne.MY_GRID%lonmax) MY_ERR%flag = 1
     else
-       if(master) then
+       if(master_model) then
           istat = nf90_get_att(ncID, NF90_GLOBAL, attr_lonmax_name, rval)
           if(rval.ne.MY_GRID%lonmax) MY_ERR%flag = 1
        end if
@@ -4936,7 +4932,7 @@ CONTAINS
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_latmin_name, rval)
        if(rval.ne.MY_GRID%latmin) MY_ERR%flag = 1
     else
-       if(master) then
+       if(master_model) then
           istat = nf90_get_att(ncID, NF90_GLOBAL, attr_latmin_name, rval)
           if(rval.ne.MY_GRID%latmin) MY_ERR%flag = 1
        end if
@@ -4951,7 +4947,7 @@ CONTAINS
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_latmax_name, rval)
        if(rval.ne.MY_GRID%latmax) MY_ERR%flag = 1
     else
-       if(master) then
+       if(master_model) then
           istat = nf90_get_att(ncID, NF90_GLOBAL, attr_latmax_name, rval)
           if(rval.ne.MY_GRID%latmax) MY_ERR%flag = 1
        end if
@@ -4965,7 +4961,7 @@ CONTAINS
     !*** Master gets the restarting time (MY_TIME%run_start). Note that the origin of the restart file can refer
     !*** to a different day, i.e. need to check for eventual time lag
     !
-    if(master) then
+    if(master_model) then
        !
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_year_name,    rst_year)
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_month_name,   rst_month)
@@ -5001,7 +4997,7 @@ CONTAINS
     !
     !*** Master reads and broadcasts mass balance attributes
     !
-    if(master) then
+    if(master_model) then
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_mass_ground_name,  MY_TRA%rst_mass_ground )
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_mass_lateral_name, MY_TRA%rst_mass_lateral)
        istat = nf90_get_att(ncID, NF90_GLOBAL, attr_mass_sink_name,    MY_TRA%rst_mass_sink   )
@@ -5029,8 +5025,10 @@ CONTAINS
        !
        start4d=(/my_ips_2h+2,my_jps_2h+2,my_kps_2h+2,1    /)  ! note the shift
        count4d=(/my_npx_2h,my_npy_2h,my_npz_2h,nbins/)
-       istat  = nf90_inq_varid(ncID,c_total_nc_name,con_ncID)
-       istat  = nf90_get_var  (ncID, con_ncID, my_work4d, start=start4d,count=count4d)
+       !
+       istat = nf90_inq_varid(ncID,c_total_nc_name,con_ncID)
+       istat = nf90_var_par_access(ncID,con_ncID,access = NF90_COLLECTIVE)
+       istat = nf90_get_var  (ncID, con_ncID, my_work4d, start=start4d,count=count4d)
        MY_TRA%my_c =  my_work4d
        !
        !  LOAD
@@ -5039,6 +5037,7 @@ CONTAINS
        count3d=(/my_npx_2h,my_npy_2h,nbins/)
        !
        istat = nf90_inq_varid(ncID,grn_nc_name,grn_ncID)
+       istat = nf90_var_par_access(ncID,grn_ncID,access = NF90_COLLECTIVE)
        istat = nf90_get_var(ncID, grn_ncID, my_work3d, start=start3d,count=count3d)
        MY_TRA%my_acum = my_work3d
        !
@@ -5050,7 +5049,7 @@ CONTAINS
        !
        !  CON
        !
-       if(master) then
+       if(master_model) then
           allocate(gl_work3d(-1:npx+2,-1:npy+2,-1:npz+2))
           allocate(gl_work4d(npx_2h,npy_2h,npz_2h,nbins))
           start4d=(/1,1,1,1/)
@@ -5063,7 +5062,7 @@ CONTAINS
           allocate(gl_work4d(1,1,1,1))
        end if
        do ibin = 1,nbins
-          if(master) gl_work3d(-1:npx+2,-1:npy+2,-1:npz+2) = gl_work4d(1:npx_2h,1:npy_2h,1:npz_2h,ibin)
+          if(master_model) gl_work3d(-1:npx+2,-1:npy+2,-1:npz+2) = gl_work4d(1:npx_2h,1:npy_2h,1:npz_2h,ibin)
           call domain_scatter_mass_points_2halo(gl_work3d(:,:,:),npx,npy,npz,MY_TRA%my_c(:,:,:,ibin))
        end do
        deallocate(gl_work3d)
@@ -5071,7 +5070,7 @@ CONTAINS
        !
        !  LOAD
        !
-       if(master) then
+       if(master_model) then
           allocate(gl_work2d(-1:npx+2,-1:npy+2))
           allocate(gl_work3d(npx_2h,npy_2h,nbins))
           start3d=(/1,1,1/)
@@ -5084,13 +5083,13 @@ CONTAINS
           allocate(gl_work3d(1,1,1))
        end if
        do ibin = 1,nbins
-          if(master) gl_work2d(-1:npx+2,-1:npy+2) = gl_work3d(1:npx_2h,1:npy_2h,ibin)
+          if(master_model) gl_work2d(-1:npx+2,-1:npy+2) = gl_work3d(1:npx_2h,1:npy_2h,ibin)
           call domain_scatter_mass_points_2halo_2D(gl_work2d(:,:),npx,npy,MY_TRA%my_acum(:,:,ibin))
        end do
        deallocate(gl_work2d)
        deallocate(gl_work3d)
        !
-       if(master) then
+       if(master_model) then
           istat = nf90_close(ncID)
        end if
        !
@@ -5099,6 +5098,799 @@ CONTAINS
     return
   end subroutine nc_IO_read_rst
   !
+  !--------------------------------------
+  !    subroutine nc_IO_out_grid_ensemble
+  !--------------------------------------
+  !
+  !>   @brief
+  !>   Outputs ensemble grid (time independent variables) in netCDF format
+  !
+  subroutine nc_IO_out_grid_ensemble(MY_FILES,MY_ENS,MY_GRID,MY_SPE,MY_TIME,MY_OUT,MY_ERR)
+    implicit none
+    !
+    !>   @param MY_FILES      list of files
+    !>   @param MY_ENS    list of ensemble parameters
+    !>   @param MY_GRID       ARAKAWA_C_GRID structure already filled
+    !>   @param MY_SPE        list of parameters defining species and categories
+    !>   @param MY_TIME       RUN_TIME       structure already filled
+    !>   @param MY_OUT        model output and postprocess related parameters
+    !>   @param MY_ERR        error handler
+    !
+    type(FILE_LIST),       intent(IN   ) :: MY_FILES
+    type(ENS_PARAMS),      intent(IN   ) :: MY_ENS
+    type(ARAKAWA_C_GRID),  intent(IN   ) :: MY_GRID
+    type(SPECIES_PARAMS),  intent(IN   ) :: MY_SPE
+    type(RUN_TIME),        intent(IN   ) :: MY_TIME
+    type(MODEL_OUTPUT),    intent(IN   ) :: MY_OUT
+    type(ERROR_STATUS),    intent(INOUT) :: MY_ERR
+    !
+    character(len=s_file) :: nc_file,sblock,name_nc
+    character(len=16)     :: out_date
+    integer(ip)           :: nbx,nby
+    integer(ip)           :: mode_flag,istat, iens
+    integer(ip)           :: iyr,imo,idy,ihr,imi,ise,it
+    integer(ip)           :: ispe, spe_code, cat_code
+    !
+    integer(ip), allocatable :: iwork(:)
+    !
+    !*** Initializations
+    !
+    MY_ERR%flag    = 0
+    MY_ERR%source  = 'nc_IO_out_grid_ensemble'
+    MY_ERR%message = ' '
+    !
+    nc_file = MY_FILES%file_pos
+    !
+    nbx = gl_nbx
+    nby = gl_nby
+    !
+    !*** Create file (serial I/O)
+    !
+    mode_flag = IOR(NF90_CLOBBER,NF90_NETCDF4)
+    istat     = nf90_create(TRIM(nc_file),cmode=mode_flag, ncid=ncID)
+    if(istat.ne.nf90_noerr) then
+        MY_ERR%flag    = istat
+        MY_ERR%message = nf90_strerror(istat)
+        return
+    end if
+       !
+       !  1. Define dimensions
+       !
+       select case(MY_GRID%map_h)
+       case(MAP_H_CARTESIAN)
+          istat = nf90_def_dim(ncID, x_nc_name, nbx , nx_ncID )
+          istat = nf90_def_dim(ncID, y_nc_name, nby , ny_ncID )
+          !
+       case(MAP_H_SPHERICAL)
+          istat = nf90_def_dim(ncID, lon_nc_name, nbx , nx_ncID )
+          istat = nf90_def_dim(ncID, lat_nc_name, nby , ny_ncID )
+          !
+       case(MAP_H_POLAR)
+          istat = nf90_def_dim(ncID, x_nc_name, nbx , nx_ncID )
+          istat = nf90_def_dim(ncID, y_nc_name, nby , ny_ncID )
+          !
+       case(MAP_H_MERCATOR)
+          istat = nf90_def_dim(ncID, x_nc_name, nbx , nx_ncID )
+          istat = nf90_def_dim(ncID, y_nc_name, nby , ny_ncID )
+          ! 
+       case default
+          MY_ERR%flag    = 1
+          MY_ERR%message = 'Incorrect horizontal mapping'
+          !
+       end select
+
+       if(MY_OUT%MY_CUTS%nfl.gt.0) istat = nf90_def_dim(ncID, zflcut_nc_name, MY_OUT%MY_CUTS%nfl, nfl_ncID)
+       !
+       if(MY_ENS%nth_con.gt.0) &
+          istat = nf90_def_dim(ncID, th_con_nc_name,         MY_ENS%nth_con,         nth_con_ncID         )
+       if(MY_ENS%nth_col_mass.gt.0) &
+          istat = nf90_def_dim(ncID, th_col_mass_nc_name,    MY_ENS%nth_col_mass,    nth_col_mass_ncID    )
+       if(MY_ENS%nth_col_mass_DU.gt.0) &
+          istat = nf90_def_dim(ncID, th_col_mass_DU_nc_name, MY_ENS%nth_col_mass_DU, nth_col_mass_DU_ncID )
+       if(MY_ENS%nth_grn_load.gt.0) &
+          istat = nf90_def_dim(ncID, th_grn_load_nc_name,    MY_ENS%nth_grn_load,    nth_grn_load_ncID    )
+       if(MY_ENS%nval_per.gt.0) &
+          istat = nf90_def_dim(ncID, val_per_nc_name,    MY_ENS%nval_per,            nval_per_ncID    )
+       !
+       istat = nf90_def_dim(ncID, ens_nc_name, nens, nens_ncID)
+       istat = nf90_def_dim(ncID, str_nc_name, s_name,       nstr_ncID)
+       istat = nf90_def_dim(ncID, tim_nc_name, NF90_UNLIMITED, nt_ncID  )
+       !
+       ! 2. Define coordinate variables
+       !
+       select case(MY_GRID%map_h)
+       case(MAP_H_CARTESIAN)
+          !
+          istat = nf90_def_var(ncID, x_nc_name ,NF90_MYTYPE, (/nx_ncID/), lon_ncID)
+          istat = nf90_put_att(ncID, lon_ncID, attr_long_name, 'x-coordinate')
+          istat = nf90_put_att(ncID, lon_ncID, attr_units_name,'m')
+          istat = nf90_put_att(ncID, lon_ncID, attr_min_name,   MY_GRID%lonmin)
+          istat = nf90_put_att(ncID, lon_ncID, attr_max_name,   MY_GRID%lonmax)
+          istat = nf90_put_att(ncID, lon_ncID, attr_cell_name,  MY_GRID%dlon)
+          istat = nf90_put_att(ncID, lon_ncID, attr_projection_name,'cartesian')
+          istat = nf90_put_att(ncID, lon_ncID, attr_map_h_name, MY_GRID%map_h)
+          !
+          istat = nf90_def_var(ncID, y_nc_name ,NF90_MYTYPE, (/ny_ncID/), lat_ncID)
+          istat = nf90_put_att(ncID, lat_ncID, attr_long_name, 'y-coordinate')
+          istat = nf90_put_att(ncID, lat_ncID, attr_units_name,'m')
+          istat = nf90_put_att(ncID, lat_ncID, attr_min_name,   MY_GRID%latmin)
+          istat = nf90_put_att(ncID, lat_ncID, attr_max_name,   MY_GRID%latmax)
+          istat = nf90_put_att(ncID, lat_ncID, attr_cell_name,  MY_GRID%dlat)
+          istat = nf90_put_att(ncID, lat_ncID, attr_projection_name,'cartesian')
+          !
+       case(MAP_H_SPHERICAL)
+          !
+          istat = nf90_def_var(ncID, lon_nc_name ,NF90_MYTYPE, (/nx_ncID/), lon_ncID)
+          istat = nf90_put_att(ncID, lon_ncID, attr_long_name, 'longitude')
+          istat = nf90_put_att(ncID, lon_ncID, attr_short_name,'longitude')
+          istat = nf90_put_att(ncID, lon_ncID, attr_units_name,'degrees_east')
+          istat = nf90_put_att(ncID, lon_ncID, attr_min_name,   MY_GRID%lonmin)
+          istat = nf90_put_att(ncID, lon_ncID, attr_max_name,   MY_GRID%lonmax)
+          istat = nf90_put_att(ncID, lon_ncID, attr_cell_name,  MY_GRID%dlon)
+          istat = nf90_put_att(ncID, lon_ncID, attr_projection_name,'spherical')
+          istat = nf90_put_att(ncID, lon_ncID, attr_map_h_name, MY_GRID%map_h)
+          !    
+          istat = nf90_def_var(ncID, lat_nc_name ,NF90_MYTYPE, (/ny_ncID/), lat_ncID)
+          istat = nf90_put_att(ncID, lat_ncID, attr_long_name, 'latitude')
+          istat = nf90_put_att(ncID, lat_ncID, attr_short_name,'latitude')
+          istat = nf90_put_att(ncID, lat_ncID, attr_units_name,'degrees_north')
+          istat = nf90_put_att(ncID, lat_ncID, attr_min_name,   MY_GRID%latmin)
+          istat = nf90_put_att(ncID, lat_ncID, attr_max_name,   MY_GRID%latmax)
+          istat = nf90_put_att(ncID, lat_ncID, attr_cell_name,  MY_GRID%dlat)
+          istat = nf90_put_att(ncID, lat_ncID, attr_projection_name,'spherical')
+          istat = nf90_put_att(ncID, lat_ncID, attr_map_h_name, MY_GRID%map_h)
+          !
+       case(MAP_H_POLAR, MAP_H_MERCATOR)
+          MY_ERR%flag    = 1
+          MY_ERR%message = 'Mapping not implemented yet'
+          !
+       end select
+       !
+       if(MY_OUT%MY_CUTS%nfl.gt.0) then
+          attr_desc  = 'flight level value'
+          attr_units = '-'
+          istat = nf90_def_var(ncID, zflcut_nc_name, NF90_MYTYPE, (/nfl_ncID/), zflcut_ncID)
+          istat = nf90_put_att(ncID, zflcut_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, zflcut_ncID, attr_units_name,attr_units)
+       end if
+       !
+       if(MY_ENS%nth_con.gt.0) then
+          attr_desc  = 'concentration theshold values for exceedance_probability'
+          attr_units = 'mg/m3'
+          istat = nf90_def_var(ncID, th_con_nc_name, NF90_FLOAT, (/nth_con_ncID/), th_con_ncID)
+          istat = nf90_put_att(ncID, th_con_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, th_con_ncID, attr_units_name,attr_units)
+       end if
+       !
+       if(MY_ENS%nth_col_mass.gt.0) then       
+          attr_desc  = 'column mass theshold values for exceedance_probability'
+          attr_units = 'g/m2'
+          istat = nf90_def_var(ncID, th_col_mass_nc_name, NF90_FLOAT, (/nth_col_mass_ncID/), th_col_mass_ncID)
+          istat = nf90_put_att(ncID, th_col_mass_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, th_col_mass_ncID, attr_units_name,attr_units)
+       end if
+       !
+       if(MY_ENS%nth_col_mass_DU.gt.0) then      
+          attr_desc  = 'column mass theshold values for exceedance_probability'
+          attr_units = 'DU'
+          istat = nf90_def_var(ncID, th_col_mass_DU_nc_name, NF90_FLOAT, (/nth_col_mass_DU_ncID/), th_col_mass_DU_ncID)
+          istat = nf90_put_att(ncID, th_col_mass_DU_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, th_col_mass_DU_ncID, attr_units_name,attr_units)
+       end if
+       !
+       if(MY_ENS%nth_grn_load.gt.0) then     
+          attr_desc  = 'ground load theshold values for exceedance_probability'
+          attr_units = 'kg/m2'
+          istat = nf90_def_var(ncID, th_grn_load_nc_name, NF90_FLOAT, (/nth_grn_load_ncID/), th_grn_load_ncID)
+          istat = nf90_put_att(ncID, th_grn_load_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, th_grn_load_ncID, attr_units_name,attr_units)
+       end if
+       !
+       if(MY_ENS%nval_per.gt.0) then     
+          attr_desc  = 'Probability of exceedence values (percentiles) for intensity_measure variables'
+          attr_units = 'in %'
+          istat = nf90_def_var(ncID, val_per_nc_name, NF90_FLOAT, (/nval_per_ncID/), val_per_ncID)
+          istat = nf90_put_att(ncID, val_per_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, val_per_ncID, attr_units_name,attr_units)
+       end if
+       !
+       if(MY_ENS%postprocess_members) then
+          attr_desc  = 'ensemble member number'
+          attr_units = '-'
+          istat = nf90_def_var(ncID, ens_nc_name, NF90_FLOAT, (/nens_ncID/), ens_ncID)
+          istat = nf90_put_att(ncID, ens_ncID, attr_long_name, attr_desc)
+          istat = nf90_put_att(ncID, ens_ncID, attr_units_name,attr_units)
+       end if
+       !
+       write(attr_units,"(A,1X,I4.4,'-',I2.2,'-',I2.2,1X,A)") "seconds since",     &
+            MY_TIME%start_year,  &
+            MY_TIME%start_month, &
+            MY_TIME%start_day,   &
+            '0:0:0'
+       istat = nf90_def_var(ncID, tim_nc_name ,NF90_INT, (/nt_ncID/), tim_ncID)
+       istat = nf90_put_att(ncID, tim_ncID, attr_long_name,     'time')
+       istat = nf90_put_att(ncID, tim_ncID, attr_units_name,    attr_units)
+       istat = nf90_put_att(ncID, tim_ncID, attr_calendar_name, 'proleptic_gregorian')
+       istat = nf90_put_att(ncID, tim_ncID, attr_year_name,     MY_TIME%start_year)
+       istat = nf90_put_att(ncID, tim_ncID, attr_month_name,    MY_TIME%start_month)
+       istat = nf90_put_att(ncID, tim_ncID, attr_day_name,      MY_TIME%start_day)
+       !
+       attr_desc  = 'date in format DDmonYYYY_HH:MM'
+       attr_units = '-'
+       istat = nf90_def_var(ncID, date_nc_name ,NF90_CHAR, (/nstr_ncID,nt_ncID/), date_ncID)
+       istat = nf90_put_att(ncID, date_ncID, attr_long_name,  attr_desc)
+       istat = nf90_put_att(ncID, date_ncID, attr_units_name, attr_units)
+       !
+       !*** 3. Define the rest of variables depending on each specie
+       !
+       do ispe = 1,MY_SPE%nspe
+          spe_code   = MY_SPE%code    (ispe)
+          cat_code   = MY_SPE%category(ispe)
+          sblock     = SPE_TAG        (spe_code)
+          !
+          !  3.1. concentration at FL
+          !
+          if(MY_OUT%MY_CUTS%nfl.gt.0) then
+             !
+             !  Results for ensemble members
+             !
+             if(MY_ENS%postprocess_members) then
+                attr_desc  = TRIM(sblock)//'ensemble member concentration at flight levels'
+                attr_units = 'g/m3'
+                name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,nens_ncID,nt_ncID/), fl_ncID)
+                istat = nf90_put_att(ncID, fl_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, fl_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble mean
+             !
+             if(MY_ENS%postprocess_mean) then
+                attr_desc  = TRIM(sblock)//'ensemble mean concentration at flight levels'
+                attr_units = 'g/m3'
+                name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_mean_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,nt_ncID/), ens_mean_ncID)
+                istat = nf90_put_att(ncID, ens_mean_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_mean_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble logmean
+             !
+             if(MY_ENS%postprocess_logmean) then
+                attr_desc  = TRIM(sblock)//'ensemble log10 mean concentration at flight levels'
+                attr_units = 'g/m3'
+                name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_logmean_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,nt_ncID/), ens_logmean_ncID)
+                istat = nf90_put_att(ncID, ens_logmean_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_logmean_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  standard deviation
+             !
+             if(MY_ENS%postprocess_sandard_dev) then
+                attr_desc  = TRIM(sblock)//'ensemble standard deviation of concentration at flight levels'
+                attr_units = 'g/m3'
+                name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_std_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,nt_ncID/), ens_std_ncID)
+                istat = nf90_put_att(ncID, ens_std_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_std_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble median
+             !
+             if(MY_ENS%postprocess_median) then
+                attr_desc  = TRIM(sblock)//'ensemble median of concentration at flight levels'
+                attr_units = 'g/m3'
+                name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_median_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,nt_ncID/), ens_median_ncID)
+                istat = nf90_put_att(ncID, ens_median_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_median_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  exceedence_probability
+             !
+             if(MY_ENS%postprocess_probability.and.MY_ENS%nth_con.gt.0) then
+                attr_short = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_prb_nc_name)
+                attr_desc  = TRIM(sblock)//'ensemble probability of concentration at flight levels exceeding threshold'
+                attr_units = '(%)'
+                attr_axis  = 'Y'
+                name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_prb_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,th_con_ncID,nt_ncID/), ens_prb_ncID)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_units_name,attr_units)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_axis_name, attr_axis)
+             end if
+             !
+             !  Intensity Measure 
+             !
+             if(MY_ENS%postprocess_percentiles.and.MY_ENS%nval_per.gt.0) then
+                attr_short = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_per_nc_name)
+                attr_desc  = TRIM(sblock)//'ensemble percentile of concentration at flight levels'
+                attr_units = 'gr/m3'
+                attr_axis  = 'X'
+                name_nc    = TRIM(sblock)//TRIM(c_total_nc_name)//TRIM(ens_per_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nfl_ncID,nval_per_ncID,nt_ncID/), ens_per_ncID)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_units_name,attr_units)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_axis_name, attr_axis)
+             end if
+             !
+          end if
+          !
+          !  3.2. COL_MASS
+          !
+          if(MY_OUT%out_col_load) then
+             !
+             !  Results for ensemble members
+             !
+             if(MY_ENS%postprocess_members) then
+                attr_desc  = TRIM(sblock)//'ensemble member column mass load'
+                if(spe_code.eq.SPE_SO2) then
+                   attr_units = 'DU'
+                else
+                   attr_units = 'g/m2'
+                end if
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nens_ncID,nt_ncID/), col_ncID)
+                istat = nf90_put_att(ncID, col_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, col_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble mean
+             !
+             if(MY_ENS%postprocess_mean) then
+                attr_desc  = TRIM(sblock)//'ensemble mean column mass load'
+                if(spe_code.eq.SPE_SO2) then
+                   attr_units = 'DU'
+                else
+                   attr_units = 'g/m2'
+                end if
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_mean_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ens_mean_ncID)
+                istat = nf90_put_att(ncID, ens_mean_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_mean_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble logmean
+             !
+             if(MY_ENS%postprocess_logmean) then
+                attr_desc  = TRIM(sblock)//'ensemble log10 mean column mass load'
+                if(spe_code.eq.SPE_SO2) then
+                   attr_units = 'DU'
+                else
+                   attr_units = 'g/m2'
+                end if
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_logmean_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ens_logmean_ncID)
+                istat = nf90_put_att(ncID, ens_logmean_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_logmean_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  standard deviation
+             !
+             if(MY_ENS%postprocess_sandard_dev) then
+                attr_desc  = TRIM(sblock)//'ensemble standard deviation of column mass load'
+                if(spe_code.eq.SPE_SO2) then
+                   attr_units = 'DU'
+                else
+                   attr_units = 'g/m2'
+                end if
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_std_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ens_std_ncID)
+                istat = nf90_put_att(ncID, ens_std_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_std_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble median
+             !
+             if(MY_ENS%postprocess_median) then
+                attr_desc  = TRIM(sblock)//'ensemble median of column mass load'
+                if(spe_code.eq.SPE_SO2) then
+                   attr_units = 'DU'
+                else
+                   attr_units = 'g/m2'
+                end if
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_median_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ens_median_ncID)
+                istat = nf90_put_att(ncID, ens_median_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_median_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  PoE
+             !
+             if(MY_ENS%postprocess_probability) then
+             if( (spe_code.eq.SPE_SO2).and.(MY_ENS%nth_col_mass_DU.gt.0) ) then
+                attr_short = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_prb_nc_name)
+                attr_desc  = TRIM(sblock)//'ensemble probability of column mass load exceeding threshold (in DU)'
+                attr_units = '(%)'
+                attr_axis  = 'Y'
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_prb_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nth_col_mass_DU_ncID,nt_ncID/), &
+                                     ens_prb_ncID)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_units_name,attr_units)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_axis_name, attr_axis)
+                !
+             else if( (spe_code.ne.SPE_SO2).and.(MY_ENS%nth_col_mass.gt.0) ) then
+                attr_short = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_prb_nc_name)
+                attr_desc  = TRIM(sblock)//'ensemble probability of column mass load exceeding threshold'
+                attr_units = '(%)'
+                attr_axis  = 'Y'
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_prb_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nth_col_mass_ncID,nt_ncID/),&
+                                     ens_prb_ncID)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_units_name,attr_units)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_axis_name, attr_axis)
+             end if
+             end if
+             !
+             !  Intensity Measure 
+             !
+             if(MY_ENS%postprocess_percentiles) then
+             if( (spe_code.eq.SPE_SO2).and.(MY_ENS%nval_per.gt.0) ) then
+                attr_short = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_per_nc_name)
+                attr_desc  = TRIM(sblock)//'ensemble percentile of column mass load (in DU)'
+                attr_units = 'DU'
+                attr_axis  = 'X'
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_per_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nval_per_ncID,nt_ncID/), &
+                                     ens_per_ncID)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_units_name,attr_units)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_axis_name, attr_axis)
+                !
+             else if( (spe_code.ne.SPE_SO2).and.(MY_ENS%nval_per.gt.0) ) then
+                attr_short = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_per_nc_name)
+                attr_desc  = TRIM(sblock)//'ensemble percentile of column mass load '
+                attr_units = 'g/m2'
+                attr_axis  = 'X'
+                name_nc    = TRIM(sblock)//TRIM(col_nc_name)//TRIM(ens_per_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nval_per_ncID,nt_ncID/),&
+                                     ens_per_ncID)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_units_name,attr_units)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_axis_name, attr_axis)
+             end if
+             end if
+             !
+          end if
+          !
+          !  3.3. GRN_LOAD
+          !
+          if(MY_OUT%out_grn_total) then
+             !
+             !  Results for ensemble members
+             !
+             if(MY_ENS%postprocess_members) then
+                attr_desc  = TRIM(sblock)//'ensemble member ground load'
+                attr_units = 'kg/m2'
+                name_nc    = TRIM(sblock)//TRIM(grn_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nens_ncID,nt_ncID/), grn_ncID)
+                istat = nf90_put_att(ncID, grn_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, grn_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble mean
+             !
+             if(MY_ENS%postprocess_mean) then
+                attr_desc  = TRIM(sblock)//'ensemble mean ground load'
+                attr_units = 'kg/m2'
+                name_nc    = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_mean_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ens_mean_ncID)
+                istat = nf90_put_att(ncID, ens_mean_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_mean_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble log mean
+             !
+             if(MY_ENS%postprocess_logmean) then
+                attr_desc  = TRIM(sblock)//'ensemble log10 mean ground load'
+                attr_units = 'kg/m2'
+                name_nc    = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_logmean_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ens_logmean_ncID)
+                istat = nf90_put_att(ncID, ens_logmean_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_logmean_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  standard deviation
+             !
+             if(MY_ENS%postprocess_sandard_dev) then
+                attr_desc  = TRIM(sblock)//'ensemble standard deviation of ground load'
+                attr_units = 'kg/m2'
+                name_nc    = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_std_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ens_std_ncID)
+                istat = nf90_put_att(ncID, ens_std_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_std_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  ensemble median
+             !
+             if(MY_ENS%postprocess_median) then
+                attr_desc  = TRIM(sblock)//'ensemble median of ground load'
+                attr_units = 'kg/m2'
+                name_nc    = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_median_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nt_ncID/), ens_median_ncID)
+                istat = nf90_put_att(ncID, ens_median_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_median_ncID, attr_units_name,attr_units)
+             end if
+             !
+             !  PoE
+             !
+             if(MY_ENS%postprocess_probability.and.MY_ENS%nth_grn_load.gt.0) then
+                attr_short = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_prb_nc_name)
+                attr_desc  = TRIM(sblock)//'ensemble probability of ground load exceeding threshold'
+                attr_units = '(%)'
+                attr_axis  = 'Y'
+                name_nc    = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_prb_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,th_grn_load_ncID,nt_ncID/),ens_prb_ncID)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_units_name,attr_units)
+                istat = nf90_put_att(ncID, ens_prb_ncID, attr_axis_name, attr_axis)
+             end if
+             !
+             !  Intensity measure
+             !
+             if(MY_ENS%postprocess_percentiles.and.MY_ENS%nval_per.gt.0) then
+                attr_short = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_per_nc_name)
+                attr_desc  = TRIM(sblock)//'ensemble percentile of ground load'
+                attr_units = 'kg/m2'
+                attr_axis  = 'X'
+                name_nc    = TRIM(sblock)//TRIM(grn_nc_name)//TRIM(ens_per_nc_name)
+                istat = nf90_def_var(ncID, name_nc,NF90_MYTYPE, (/nx_ncID,ny_ncID,nval_per_ncID,nt_ncID/),ens_per_ncID)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_short_name,attr_short) 
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_long_name, attr_desc)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_units_name,attr_units)
+                istat = nf90_put_att(ncID, ens_per_ncID, attr_axis_name, attr_axis)
+             end if
+             !
+          end if
+          !
+       end do  ! do ispe = 1,MY_SPE%nspe
+       !
+       !*** 4. Put global attributes
+       !
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_conventions_name, 'CF-1.8')
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_references_name,  'NetCDF Climate and Forecast (CF) Metadata Conventions')
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_title_name,       'ensemble model results')
+       istat = nf90_put_att(ncID, NF90_GLOBAL, attr_source_name,      'FALL3D model version '//VERSION)
+       !
+       istat = nf90_enddef(ncID)
+       !
+       !*** 5. Write coordinate (time-independent) variables
+       !
+       istat = nf90_put_var(ncID, lon_ncID, MY_GRID%lon_c,start=(/1/),count=(/nbx/))
+       istat = nf90_put_var(ncID, lat_ncID, MY_GRID%lat_c,start=(/1/),count=(/nby/))
+       if(MY_OUT%MY_CUTS%nfl.gt.0) &
+          istat = nf90_put_var(ncID, zflcut_ncID, MY_OUT%MY_CUTS%fl_cut, start=(/1/),count=(/MY_OUT%MY_CUTS%nfl/))
+       istat = nf90_put_var(ncID, npm_ncID,INT(pm_value),start=(/1/),count=(/npm/))
+       if(MY_ENS%nth_con.gt.0) &
+          istat = nf90_put_var(ncID, th_con_ncID,1e3_rp*MY_ENS%th_con,start=(/1/),count=(/MY_ENS%nth_con/))
+       if(MY_ENS%nth_col_mass.gt.0) &
+          istat = nf90_put_var(ncID, th_col_mass_ncID,MY_ENS%th_col_mass,start=(/1/),count=(/MY_ENS%nth_col_mass/))
+       if(MY_ENS%nth_col_mass_DU.gt.0) &
+          istat = nf90_put_var(ncID, th_col_mass_DU_ncID,MY_ENS%th_col_mass_DU,start=(/1/),count=(/MY_ENS%nth_col_mass_DU/))            
+       if(MY_ENS%nth_grn_load.gt.0) &
+          istat = nf90_put_var(ncID, th_grn_load_ncID,MY_ENS%th_grn_load,start=(/1/),count=(/MY_ENS%nth_grn_load/))
+       if(MY_ENS%nval_per.gt.0) &
+          istat = nf90_put_var(ncID, val_per_ncID,MY_ENS%val_per,start=(/1/),count=(/MY_ENS%nval_per/))
+       !
+       if(MY_ENS%postprocess_members) then
+          allocate(iwork(nens))
+          do iens = 1,nens
+             iwork(iens) = iens
+          end do
+          istat = nf90_put_var(ncID, ens_ncID,iwork,start=(/1/),count=(/nens/))
+          deallocate (iwork)
+       end if
+       !
+       istat = nf90_put_var(ncID,tim_ncID,INT(MY_ENS%pp_timesec),start=(/1/),count=(/MY_ENS%pp_nt/))
+       !
+       !*** Compute and print variable date
+       !
+       do it = 1,MY_ENS%pp_nt
+          call time_addtime(MY_TIME%start_year,MY_TIME%start_month,MY_TIME%start_day,0, &
+                            iyr,imo,idy,ihr,imi,ise,MY_ENS%pp_timesec(it),MY_ERR)
+          call time_dateformat(iyr,imo,idy,ihr,imi,ise,2_ip,out_date,MY_ERR)
+          istat = nf90_put_var(ncID,date_ncID,out_date,start=(/1,it/))
+       end do   
+       !
+       !*** Close the file
+       !
+       istat = nf90_close(ncID)
+       !
+       return
+       end subroutine nc_IO_out_grid_ensemble
+  !
+  !
+  !  PRIVATE ROUTINES
+  !
+  !
+ subroutine nc_IO_out_variable_3d(file_name, var_name, n1, n2, n3, var, MY_ERR)
+    implicit none
+    !
+    character(s_file),  intent(IN   ) :: file_name
+    character(len=* ),  intent(IN   ) :: var_name
+    integer(ip),        intent(IN   ) :: n1
+    integer(ip),        intent(IN   ) :: n2
+    integer(ip),        intent(IN   ) :: n3
+    real(rp),           intent(INOUT) :: var(n1,n2,n3)
+    type(ERROR_STATUS), intent(INOUT) :: MY_ERR
+    !
+    integer(ip)  :: ncID,varID
+    integer(ip)  :: istat,mode_flag
+    integer(ip)  :: start3d(3)
+    integer(ip)  :: count3d(3)
+    !
+    !*** Initializations
+    !
+    MY_ERR%flag    = 0
+    MY_ERR%source  = 'nc_IO_out_variable_3d'
+    MY_ERR%message = ' '
+    !
+    mode_flag = NF90_WRITE
+    istat = nf90_open(TRIM(file_name), mode_flag, ncID)
+    !
+    start3d=(/1,1,1/)
+    count3d=(/n1,n2,n3/)
+    istat = nf90_inq_varid(ncID, TRIM(var_name), varID)
+    istat = nf90_put_var(ncID, varID, var,start=start3d,count=count3d)
+    !
+    istat = nf90_close(ncID)
+    !
+    return
+  end subroutine nc_IO_out_variable_3d
+  !
+  subroutine nc_IO_out_variable_4d(file_name, var_name, n1, n2, n3, n4, var, MY_ERR)
+    implicit none
+    !
+    character(s_file),  intent(IN   ) :: file_name
+    character(len=* ),  intent(IN   ) :: var_name
+    integer(ip),        intent(IN   ) :: n1
+    integer(ip),        intent(IN   ) :: n2
+    integer(ip),        intent(IN   ) :: n3
+    integer(ip),        intent(IN   ) :: n4
+    real(rp),           intent(INOUT) :: var(n1,n2,n3,n4)
+    type(ERROR_STATUS), intent(INOUT) :: MY_ERR
+    !
+    integer(ip)  :: ncID,varID
+    integer(ip)  :: istat,mode_flag
+    integer(ip)  :: start4d(4)
+    integer(ip)  :: count4d(4)
+    !
+    !*** Initializations
+    !
+    MY_ERR%flag    = 0
+    MY_ERR%source  = 'nc_IO_out_variable_4d'
+    MY_ERR%message = ' '
+    !
+    mode_flag = NF90_WRITE
+    istat = nf90_open(TRIM(file_name), mode_flag, ncID)
+    !
+    start4d=(/1,1,1,1/)
+    count4d=(/n1,n2,n3,n4/)
+    istat = nf90_inq_varid(ncID, TRIM(var_name), varID)
+    istat = nf90_put_var(ncID, varID, var,start=start4d,count=count4d)
+    !
+    istat = nf90_close(ncID)
+    !
+    return
+  end subroutine nc_IO_out_variable_4d
+  !
+  subroutine nc_IO_out_variable_5d(file_name, var_name, n1, n2, n3, n4, n5, var, MY_ERR)
+    implicit none
+    !
+    character(s_file),  intent(IN   ) :: file_name
+    character(len=* ),  intent(IN   ) :: var_name
+    integer(ip),        intent(IN   ) :: n1
+    integer(ip),        intent(IN   ) :: n2
+    integer(ip),        intent(IN   ) :: n3
+    integer(ip),        intent(IN   ) :: n4
+    integer(ip),        intent(IN   ) :: n5
+    real(rp),           intent(INOUT) :: var(n1,n2,n3,n4,n5)
+    type(ERROR_STATUS), intent(INOUT) :: MY_ERR
+    !
+    integer(ip)  :: ncID,varID
+    integer(ip)  :: istat,mode_flag
+    integer(ip)  :: start5d(5)
+    integer(ip)  :: count5d(5)
+    !
+    !*** Initializations
+    !
+    MY_ERR%flag    = 0
+    MY_ERR%source  = 'nc_IO_out_variable_5d'
+    MY_ERR%message = ' '
+    !
+    mode_flag = NF90_WRITE
+    istat = nf90_open(TRIM(file_name), mode_flag, ncID)
+    !
+    start5d=(/1,1,1,1,1/)
+    count5d=(/n1,n2,n3,n4,n5/)
+    istat = nf90_inq_varid(ncID, TRIM(var_name), varID)
+    istat = nf90_put_var(ncID, varID, var,start=start5d,count=count5d)
+    !
+    istat = nf90_close(ncID)
+    !
+    return
+  end subroutine nc_IO_out_variable_5d
+  ! 
+  subroutine nc_IO_read_variable_3d(file_name, var_name, var, n1, n2, n3, MY_ERR)
+    implicit none
+    !
+    character(s_file),  intent(IN   ) :: file_name
+    character(len=* ),  intent(IN   ) :: var_name
+    real(rp),           intent(INOUT) :: var(n1,n2,n3)
+    integer(ip),        intent(IN   ) :: n1
+    integer(ip),        intent(IN   ) :: n2
+    integer(ip),        intent(IN   ) :: n3
+    type(ERROR_STATUS), intent(INOUT) :: MY_ERR
+    !
+    integer(ip)  :: ncID,varID
+    integer(ip)  :: istat,mode_flag
+    integer(ip)  :: start3d(3)
+    integer(ip)  :: count3d(3)
+    !
+    !*** Initializations
+    !
+    MY_ERR%flag    = 0
+    MY_ERR%source  = 'nc_IO_read_variable_3d'
+    MY_ERR%message = ' '
+    !
+    mode_flag = NF90_NOWRITE
+    istat = nf90_open(TRIM(file_name), mode_flag, ncID)
+    !
+    start3d=(/1,1,1/)
+    count3d=(/n1,n2,n3/)
+    istat = nf90_inq_varid(ncID, TRIM(var_name), varID)
+    istat = nf90_get_var(ncID, varID, var,start=start3d,count=count3d)
+    !
+    istat = nf90_close(ncID)
+    !
+    return
+  end subroutine nc_IO_read_variable_3d
+  !
+  subroutine nc_IO_read_variable_4d(file_name, var_name, var, n1, n2, n3, n4, MY_ERR)
+    implicit none
+    !
+    character(s_file),  intent(IN   ) :: file_name
+    character(len=* ),  intent(IN   ) :: var_name
+    real(rp),           intent(INOUT) :: var(n1,n2,n3,n4)
+    integer(ip),        intent(IN   ) :: n1
+    integer(ip),        intent(IN   ) :: n2
+    integer(ip),        intent(IN   ) :: n3
+    integer(ip),        intent(IN   ) :: n4
+    type(ERROR_STATUS), intent(INOUT) :: MY_ERR
+    !
+    integer(ip)  :: ncID,varID
+    integer(ip)  :: istat,mode_flag
+    integer(ip)  :: start4d(4)
+    integer(ip)  :: count4d(4)
+    !
+    !*** Initializations
+    !
+    MY_ERR%flag    = 0
+    MY_ERR%source  = 'nc_IO_read_variable_4d'
+    MY_ERR%message = ' '
+    !
+    mode_flag = NF90_NOWRITE
+    istat = nf90_open(TRIM(file_name), mode_flag, ncID)
+    !
+    start4d=(/1,1,1,1/)
+    count4d=(/n1,n2,n3,n4/)
+    istat = nf90_inq_varid(ncID, TRIM(var_name), varID)
+    istat = nf90_get_var(ncID, varID, var,start=start4d,count=count4d)
+    !
+    istat = nf90_close(ncID)
+    !
+    return
+  end subroutine nc_IO_read_variable_4d
   !
   !
 END MODULE nc_IO

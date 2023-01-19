@@ -12,24 +12,38 @@
 !**********************************************************************
 MODULE Parallel
   use KindType
-  implicit none
 #if defined WITH_MPI
-  include 'mpif.h'
+!  include 'mpif.h'
+   use mpi
 #endif
-  save
+  implicit none
+!  save
   !
   !   LIST OF PUBLIC VARIABLES
   !
-  logical     :: master          !< true/false (master for i/o)
   logical     :: PARALLEL_RUN    !< true/flase
-  integer(ip) :: COMM_WORLD      !< MPI_COMM_WORLD handler
   integer(ip) :: MPI_PRECISION   !< MPI data type
-  integer(ip) :: nproc           !< total number of processors
-  integer(ip) :: mpime           !< my processor number (my task id)
+  !
+  integer(ip) :: COMM_WORLD      !< MPI communicator for MPI_COMM_WORLD
+  integer(ip) :: mype_world      !< PE rank in COMM_WORLD
+  integer(ip) :: npes_world      !< number of PEs in COMM_WORLD
+  logical     :: master_world    !< if I am master in COMM_WORLD
+  !
+  integer(ip) :: COMM_MODEL      !< MPI communicator for model sub-domains
+  integer(ip) :: mype_model      !< PE rank in COMM_MODEL
+  integer(ip) :: npes_model      !< number of PEs in COMM_MODEL
+  logical     :: master_model    !< if I am master in COMM_MODEL
+  !
+  integer(ip) :: COMM_COUPLE     !< MPI communicator for ensemble members
+  integer(ip) :: mype_couple     !< PE rank in COMM_COUPLE
+  integer(ip) :: npes_couple     !< number of PEs in COMM_COUPLE
+  !
+  integer(ip) :: task_id         !< identifier for model tasks (1...nens)
   !
   !   LIST OF PUBLIC ROUTINES
   !
   PUBLIC  :: parallel_startup
+  PUBLIC  :: parallel_init_model
   PUBLIC  :: parallel_hangup
   PUBLIC  :: parallel_wait
   PUBLIC  :: parallel_barrier
@@ -56,13 +70,16 @@ MODULE Parallel
   !>   Parallel_sum ( array, group )  array reduction among processors of group (interfaced procedure)
   !
   INTERFACE parallel_sum
-     MODULE PROCEDURE parallel_sum_r1d, parallel_sum_r2d,parallel_sum_r3d, &
-          parallel_sum_r4d,parallel_sum_i1d, parallel_sum_i2d, &
-          parallel_sum_i3d, parallel_sum_i4d
+     MODULE PROCEDURE &
+             parallel_sum_r0d, parallel_sum_r1d, parallel_sum_r2d, &
+             parallel_sum_r3d, parallel_sum_r4d, parallel_sum_i0d, &
+             parallel_sum_i1d, parallel_sum_i2d, parallel_sum_i3d, &
+             parallel_sum_i4d
   END INTERFACE parallel_sum
-  PRIVATE :: parallel_sum_r1d, parallel_sum_r2d,parallel_sum_r3d, &
-       parallel_sum_r4d,parallel_sum_i1d, parallel_sum_i2d,parallel_sum_i3d, &
-       parallel_sum_i4d
+  PRIVATE :: parallel_sum_r0d, parallel_sum_r1d, parallel_sum_r2d, &
+             parallel_sum_r3d, parallel_sum_r4d, parallel_sum_i0d, &
+             parallel_sum_i1d, parallel_sum_i2d, parallel_sum_i3d, &
+             parallel_sum_i4d
   PRIVATE :: parallel_sum_real
   PRIVATE :: parallel_sum_integer
   !
@@ -129,26 +146,88 @@ CONTAINS
 #endif
     !
 #if defined WITH_MPI
-    call MPI_INIT     (                     MY_ERR%flag)
-    call MPI_COMM_SIZE(MPI_COMM_WORLD,nproc,MY_ERR%flag)
-    call MPI_COMM_RANK(MPI_COMM_WORLD,mpime,MY_ERR%flag)
+    call MPI_INIT     (                          MY_ERR%flag)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD,npes_world,MY_ERR%flag)
+    call MPI_COMM_RANK(MPI_COMM_WORLD,mype_world,MY_ERR%flag)
     PARALLEL_RUN = .true.
     COMM_WORLD   = MPI_COMM_WORLD
-    if(mpime == 0) then
-       master = .true.
+    if(mype_world == 0) then
+       master_world = .true.
     else
-       master = .false.
+       master_world = .false.
     end if
 #else
-    nproc  = 1
-    mpime  = 0
+    npes_world   = 1
+    mype_world   = 0
     PARALLEL_RUN = .false.
     COMM_WORLD   = 0
-    master = .true.
+    master_world = .true.
 #endif
     !
     return
   end subroutine parallel_startup
+  !
+  !------------------------------
+  !   subroutine parallel_init_model
+  !------------------------------
+  !
+  !>   @brief
+  !>   Starts MPI communicators for model tasks
+  !
+  subroutine parallel_init_model (nens, MY_ERR)
+    implicit none
+    !
+    !>  @param nens    number of members in the ensemble
+    !>  @param MY_ERR  error handler
+    !
+    integer(ip),        intent(IN)    :: nens
+    type(ERROR_STATUS), intent(INOUT) :: MY_ERR
+    !
+    integer(ip) :: npes_model_local, color_couple
+    !
+    npes_model_local = npes_world / nens
+    task_id = mype_world/npes_model_local + 1
+    !
+#if defined WITH_MPI
+    CALL MPI_COMM_SPLIT(COMM_WORLD, &
+                        task_id,    &
+                        mype_world, &
+                        COMM_MODEL, &
+                        MY_ERR%flag )
+    !
+    CALL MPI_COMM_SIZE(COMM_MODEL, npes_model, MY_ERR%flag)
+    CALL MPI_COMM_RANK(COMM_MODEL, mype_model, MY_ERR%flag)
+    !
+    if(mype_model == 0) then
+       master_model = .true.
+    else
+       master_model = .false.
+    end if
+    !
+    !*** Generate communicator between model and filter PEs
+    !
+    color_couple = mype_model + 1
+    CALL MPI_COMM_SPLIT(COMM_WORLD,   &
+                        color_couple, &
+                        mype_world,   &
+                        COMM_COUPLE,  &
+                        MY_ERR%flag )
+    !
+    CALL MPI_Comm_Size(COMM_COUPLE, npes_couple, MY_ERR%flag)
+    CALL MPI_Comm_Rank(COMM_COUPLE, mype_couple, MY_ERR%flag)
+    !
+#else
+    npes_model   = npes_world
+    mype_model   = mype_world
+    COMM_MODEL   = COMM_WORLD
+    master_model = master_world
+    npes_couple  = npes_world
+    mype_couple  = mype_world
+    COMM_COUPLE  = COMM_WORLD
+#endif
+    !
+    return
+  end subroutine parallel_init_model
   !
   !------------------------------
   !   subroutine parallel_hangup
@@ -162,12 +241,26 @@ CONTAINS
     !
     !>  @param MY_ERR  error handler
     !
-    type(ERROR_STATUS) :: MY_ERR
+    type(ERROR_STATUS), intent(INOUT) :: MY_ERR
+    !
+    integer(ip) :: flag
+    !
+    flag = MY_ERR%flag
     !
 #if defined WITH_MPI
     call MPI_FINALIZE(MY_ERR%flag)
 #endif
-    call exit(MY_ERR%flag)
+    !
+    !call exit(MY_ERR%flag)   ! exit is not callable
+    if(master_world) then
+        if(MY_ERR%flag.eq.0 .and. flag.eq.0) then
+            stop ! ' Normal termination'
+        else
+            stop ' Finished with errors: check log files'
+        end if
+    else
+        stop 
+    end if
     !
     return
   end subroutine parallel_hangup
@@ -221,124 +314,152 @@ CONTAINS
   !*
   !***********************************************************************
   !
-  SUBROUTINE BCAST_REAL( ARRAY, N, who )
+  SUBROUTINE BCAST_REAL( ARRAY, N, who, comm )
     IMPLICIT NONE
     REAL(rp)    ::  array
     INTEGER(ip) :: n, who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: err
-    CALL MPI_BCAST( array, n, MPI_PRECISION, who, MPI_COMM_WORLD, err)
+    INTEGER(ip) :: err, local_comm
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    CALL MPI_BCAST( array, n, MPI_PRECISION, who, local_comm, err)
 #endif
     RETURN
   END SUBROUTINE BCAST_REAL
   !
   !
   !
-  SUBROUTINE BCAST_REAL_1d( ARRAY, N, who )
+  SUBROUTINE BCAST_REAL_1d( ARRAY, N, who, comm )
     IMPLICIT NONE
     REAL(rp)    ::  array(*)
     INTEGER(ip) :: n, who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: err
-    CALL MPI_BCAST( array, n, MPI_PRECISION, who, MPI_COMM_WORLD, err)
+    INTEGER(ip) :: err, local_comm
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    CALL MPI_BCAST( array, n, MPI_PRECISION, who, local_comm, err)
 #endif
     RETURN
   END SUBROUTINE BCAST_REAL_1d
   !
   !
   !
-  SUBROUTINE BCAST_REAL_2d( ARRAY, N, who )
+  SUBROUTINE BCAST_REAL_2d( ARRAY, N, who, comm )
     IMPLICIT NONE
     REAL(rp)    ::  array(:,:)
     INTEGER(ip) :: n, who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: err
-    CALL MPI_BCAST( array, n, MPI_PRECISION, who, MPI_COMM_WORLD, err)
+    INTEGER(ip) :: err, local_comm
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    CALL MPI_BCAST( array, n, MPI_PRECISION, who, local_comm, err)
 #endif
     RETURN
   END SUBROUTINE BCAST_REAL_2d
   !
   !
   !
-  SUBROUTINE BCAST_REAL_3d( ARRAY, N, who )
+  SUBROUTINE BCAST_REAL_3d( ARRAY, N, who, comm )
     IMPLICIT NONE
     REAL(rp)    ::  array(:,:,:)
     INTEGER(ip) :: n, who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: err
-    CALL MPI_BCAST( array, n, MPI_PRECISION, who, MPI_COMM_WORLD, err)
+    INTEGER(ip) :: err, local_comm
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    CALL MPI_BCAST( array, n, MPI_PRECISION, who, local_comm, err)
 #endif
     RETURN
   END SUBROUTINE BCAST_REAL_3d
   !
   !
   !
-  SUBROUTINE BCAST_REAL_4d( ARRAY, N, who )
+  SUBROUTINE BCAST_REAL_4d( ARRAY, N, who, comm )
     IMPLICIT NONE
     REAL(rp)    ::  array(:,:,:,:)
     INTEGER(ip) :: n, who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: err
-    CALL MPI_BCAST( array, n, MPI_PRECISION, who, MPI_COMM_WORLD, err)
+    INTEGER(ip) :: err, local_comm
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    CALL MPI_BCAST( array, n, MPI_PRECISION, who, local_comm, err)
 #endif
     RETURN
   END SUBROUTINE BCAST_REAL_4d
   !
   !
   !
-  SUBROUTINE BCAST_INTEGER(ARRAY,N,who)
+  SUBROUTINE BCAST_INTEGER(ARRAY,N,who,comm)
     IMPLICIT NONE
     INTEGER(ip) :: ARRAY
     INTEGER(ip) :: N,who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: err
-    CALL MPI_BCAST( array, n, MPI_INTEGER, who, MPI_COMM_WORLD, err)
+    INTEGER(ip) :: err, local_comm
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    CALL MPI_BCAST( array, n, MPI_INTEGER, who, local_comm, err)
 #endif
     RETURN
   END SUBROUTINE BCAST_INTEGER
   !
   !
   !
-  SUBROUTINE BCAST_INTEGER_1D(ARRAY,N,who)
+  SUBROUTINE BCAST_INTEGER_1D(ARRAY,N,who,comm)
     IMPLICIT NONE
     INTEGER(ip) :: ARRAY(*)
     INTEGER(ip) :: N,who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) ::  err
-    CALL MPI_BCAST( array, n, MPI_INTEGER, who, MPI_COMM_WORLD, err)
+    INTEGER(ip) :: err, local_comm
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    CALL MPI_BCAST( array, n, MPI_INTEGER, who, local_comm, err)
 #endif
     RETURN
   END SUBROUTINE BCAST_INTEGER_1D
   !
   !
   !
-  SUBROUTINE BCAST_INTEGER_2D(ARRAY,N,who)
+  SUBROUTINE BCAST_INTEGER_2D(ARRAY,N,who,comm)
     IMPLICIT NONE
     INTEGER(ip) :: ARRAY(:,:)
     INTEGER(ip) :: N,who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: err
-    CALL MPI_BCAST( array, n, MPI_INTEGER, who, MPI_COMM_WORLD, err)
+    INTEGER(ip) :: err, local_comm
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    CALL MPI_BCAST( array, n, MPI_INTEGER, who, local_comm, err)
 #endif
     RETURN
   END SUBROUTINE BCAST_INTEGER_2D
   !
   !
   !
-  SUBROUTINE BCAST_CHARACTER( ARRAY, N, who )
+  SUBROUTINE BCAST_CHARACTER( ARRAY, N, who, comm )
     IMPLICIT NONE
     CHARACTER(LEN=*) :: ARRAY
     INTEGER(ip)      :: N, who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: I, nn
+    INTEGER(ip) :: I, nn, local_comm
     INTEGER(ip), ALLOCATABLE :: IARRAY(:)
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    !
     nn = LEN( array )
     n = n
     ALLOCATE( iarray( nn ) )
     DO I=1,nn
        IARRAY(I) = ICHAR( array( i:i ) )
     END DO
-    CALL bcast_integer_1d( iarray, nn, who )
+    CALL bcast_integer_1d( iarray, nn, who, local_comm )
     DO I=1,nn
        ARRAY(i:i) = CHAR( iarray( i ) )
     END DO
@@ -349,14 +470,17 @@ CONTAINS
   !
   !
   !
-  SUBROUTINE BCAST_LOGICAL(ARRAY,N,who)
+  SUBROUTINE BCAST_LOGICAL(ARRAY,N,who,comm)
     IMPLICIT NONE
     LOGICAL ARRAY
     INTEGER(ip) :: N
     INTEGER(ip) :: who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: I
+    INTEGER(ip) :: I, local_comm
     INTEGER(ip), ALLOCATABLE :: IARRAY(:)
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
     ALLOCATE( iarray( n ) )
     DO I=1,N
        IF(ARRAY) THEN
@@ -365,7 +489,7 @@ CONTAINS
           IARRAY(I) = 0
        END IF
     END DO
-    CALL bcast_integer_1d( iarray, n, who )
+    CALL bcast_integer_1d( iarray, n, who, local_comm )
     DO I=1,N
        IF(IARRAY(I).EQ.1) THEN
           ARRAY = .TRUE.
@@ -380,14 +504,18 @@ CONTAINS
   !
   !
   !
-  SUBROUTINE BCAST_LOGICAL_1D(ARRAY,N,who)
+  SUBROUTINE BCAST_LOGICAL_1D(ARRAY,N,who,comm)
     IMPLICIT NONE
     LOGICAL ARRAY(:)
     INTEGER(ip) :: N
     INTEGER(ip) :: who
+    INTEGER(ip), optional, intent(IN) :: comm
 #if defined WITH_MPI
-    INTEGER(ip) :: I
+    INTEGER(ip) :: I, local_comm
     INTEGER(ip), ALLOCATABLE :: IARRAY(:)
+    local_comm = COMM_MODEL
+    if(present(comm)) local_comm = comm
+    !
     ALLOCATE( iarray( n ) )
     DO I=1,N
        IF(ARRAY(I)) THEN
@@ -396,7 +524,7 @@ CONTAINS
           IARRAY(I) = 0
        END IF
     END DO
-    CALL bcast_integer_1d( iarray, n, who )
+    CALL bcast_integer_1d( iarray, n, who, local_comm )
     DO I=1,N
        IF(IARRAY(I).EQ.1) THEN
           ARRAY(I) = .TRUE.
@@ -505,6 +633,18 @@ CONTAINS
   !
   !
   !
+  SUBROUTINE parallel_sum_r0d( array, what_grp )
+    REAL   (rp) :: array
+    INTEGER(ip) :: what_grp
+    REAL   (rp) :: TMP(1)
+    TMP(1) = array
+    CALL parallel_sum_real( TMP, SIZE( TMP ), what_grp )
+    array = TMP(1)
+    RETURN
+  END SUBROUTINE parallel_sum_r0d
+  !
+  !
+  !
   SUBROUTINE parallel_sum_r1d( array, what_grp )
     REAL   (rp) :: array( : )
     INTEGER(ip) :: what_grp
@@ -541,8 +681,20 @@ CONTAINS
   !
   !
   !
+  SUBROUTINE parallel_sum_i0d( array, what_grp )
+    INTEGER(ip) :: array
+    INTEGER(ip) :: what_grp
+    INTEGER(ip) :: TMP(1)
+    TMP(1) = array
+    CALL parallel_sum_integer( TMP, SIZE( TMP ), what_grp )
+    array = TMP(1)
+    RETURN
+  END SUBROUTINE parallel_sum_i0d
+  !
+  !
+  !
   SUBROUTINE parallel_sum_i1d( array, what_grp )
-    INTEGER(ip) :: array( : )
+    INTEGER(ip) :: array(:)
     INTEGER(ip) :: what_grp
     CALL parallel_sum_integer( array, SIZE( array ), what_grp )
     RETURN
