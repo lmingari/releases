@@ -1,3 +1,7 @@
+#### Achievements
+[![SQAaaS badge](https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_bronze.png)](https://eu.badgr.com/public/assertions/bw3v-fVCR6eJoMjwG11afw "SQAaaS bronze badge achieved")
+
+--
 <img src="logo.png" width="220">
 
 ## What is FALL3D
