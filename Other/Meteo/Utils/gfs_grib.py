@@ -17,11 +17,13 @@ from fall3dutil.grib_filter import GFS
 def lat_type(str):
     try:
         lat = float(str)
-    except:
-        raise argparse.ArgumentTypeError("invalid float value: '{0}'".format(str))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+                "invalid float value: '{0}'".format(str))
 
     if lat < -90 or lat > 90:
-        raise argparse.ArgumentTypeError('latitude not in range -90..90')
+        raise argparse.ArgumentTypeError(
+                'latitude not in range -90..90')
     else:
         return lat
 
@@ -29,11 +31,13 @@ def lat_type(str):
 def lon_type(str):
     try:
         lon = float(str)
-    except:
-        raise argparse.ArgumentTypeError("invalid float value: '{0}'".format(str))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+                "invalid float value: '{0}'".format(str))
 
     if lon < -180 or lon > 360:
-        raise argparse.ArgumentTypeError('longitude not in range -180..180 or 0..360')
+        raise argparse.ArgumentTypeError(
+                'longitude not in range -180..180 or 0..360')
     else:
         return lon
 
@@ -49,17 +53,58 @@ def date_type(s):
 def main():
     # Input parameters and options
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('-x', '--lon',     help='longitude range [Default: %(default)s]',          default=(-180., 180.), nargs=2, type=lon_type,  metavar=('lonmin', 'lonmax'))
-    parser.add_argument('-y', '--lat',     help='latitude range [Default: %(default)s]',           default=(-90., 90.),   nargs=2, type=lat_type,  metavar=('latmin', 'latmax'))
-    parser.add_argument('-t', '--time',    help='time steps [Default: %(default)s]',               default=(0, 6),        nargs=2, type=int,       metavar=('tmin',   'tmax'))
-    parser.add_argument('-r', '--res',     help='spatial resolution (deg) [Default: %(default)s]', default=0.25,                   type=float,     choices=(0.25, 0.5, 1.0))
-    parser.add_argument('-c', '--cycle',   help='cycle [Default: %(default)s]',                    default=0,                      type=int,       choices=(0, 6, 12, 18))
-    parser.add_argument('-s', '--step',    help='temporal resolution (h) [Default: %(default)s]',  default=1,                      type=int,       choices=(1, 3, 12))
-    parser.add_argument('-a', '--area',    help='area name [Default: %(default)s]',                                                type=str,       metavar=('Area'))
-    parser.add_argument('-i', '--input',   help='area definition file [Default: %(default)s]',     default='areas.def',            type=str,       metavar=('AreaFile'))
-    parser.add_argument('-o', '--output',  help='output file [Default: FH-YYYYMMDD_HHz.grb]',      default='')
-    parser.add_argument('-v', '--verbose', help="increase output verbosity", action="store_true")
-    parser.add_argument('date',            help='Initial date in format YYYYMMDD',                                                 type=date_type, metavar='start_date')
+    parser.add_argument('-x', '--lon',
+                        help='longitude range [Default: %(default)s]',
+                        default=(-180., 180.),
+                        nargs=2,
+                        type=lon_type,
+                        metavar=('lonmin', 'lonmax'))
+    parser.add_argument('-y', '--lat',
+                        help='latitude range [Default: %(default)s]',
+                        default=(-90., 90.),
+                        nargs=2,
+                        type=lat_type,
+                        metavar=('latmin', 'latmax'))
+    parser.add_argument('-t', '--time',
+                        help='time steps [Default: %(default)s]',
+                        default=(0, 6),
+                        nargs=2,
+                        type=int,
+                        metavar=('tmin', 'tmax'))
+    parser.add_argument('-r', '--res',
+                        help='spatial resolution (deg) [Default: %(default)s]',
+                        default=0.25,
+                        type=float,
+                        choices=(0.25, 0.5, 1.0))
+    parser.add_argument('-c', '--cycle',
+                        help='cycle [Default: %(default)s]',
+                        default=0,
+                        type=int,
+                        choices=(0, 6, 12, 18))
+    parser.add_argument('-s', '--step',
+                        help='temporal resolution (h) [Default: %(default)s]',
+                        default=1,
+                        type=int,
+                        choices=(1, 3, 12))
+    parser.add_argument('-a', '--area',
+                        help='area name [Default: %(default)s]',
+                        type=str,
+                        metavar=('Area'))
+    parser.add_argument('-i', '--input',
+                        help='area definition file [Default: %(default)s]',
+                        default='areas.def',
+                        type=str,
+                        metavar=('AreaFile'))
+    parser.add_argument('-o', '--output',
+                        help='output file [Default: FH-YYYYMMDD_HHz.grb]',
+                        default='')
+    parser.add_argument('-v', '--verbose',
+                        help="increase output verbosity",
+                        action="store_true")
+    parser.add_argument('date',
+                        help='Initial date in format YYYYMMDD',
+                        type=date_type,
+                        metavar='start_date')
 
     args = parser.parse_args()
 
@@ -88,8 +133,9 @@ def main():
         if not args.output.endswith('.grb'):
             args.output = args.output.strip() + '.grb'
     else:
-        args.output = "{date}-{cycle:02d}z.grb".format(date=args.date.strftime("%Y%m%d"),
-                                                       cycle=args.cycle)
+        args.output = "{date}-{cycle:02d}z.grb".format(
+                date=args.date.strftime("%Y%m%d"),
+                cycle=args.cycle)
 
     if args.res == 0.25:
         if args.step != 1 and args.step != 3:
