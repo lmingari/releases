@@ -114,8 +114,8 @@ def main():
         args.latmax = args.lat[1]
 
     if args.latmin > args.latmax:
-        sys.exit("Error: Use '{-y,--lat} latmin latmax' "\
-                 "or edit the area definition file "\
+        sys.exit("Error: Use '{-y,--lat} latmin latmax' "
+                 "or edit the area definition file "
                  + args.input)
 
     if args.output:
