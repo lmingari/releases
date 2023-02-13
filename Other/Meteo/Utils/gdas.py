@@ -121,7 +121,8 @@ def main():
     args = parser.parse_args()
 
     if args.area:
-        print("Reading coordinates of {} from input file: {}".format(args.area, args.input))
+        print("Reading coordinates of {} from input file: {}".format(
+            args.area, args.input))
         config = configparser.ConfigParser()
         config.read(args.input)
         block = config[args.area]
@@ -136,7 +137,9 @@ def main():
         args.latmax = args.lat[1]
 
     if args.latmin > args.latmax:
-        sys.exit("Error: Use '{-y,--lat} latmin latmax' or edit the area definition file "+args.input)
+        sys.exit("Error: Use '{-y,--lat} latmin latmax' "\
+                 "or edit the area definition file "\
+                 + args.input)
 
     if args.time[0] > args.time[1]:
         sys.exit("Error: Use '{-t,--time}' tmin tmax")
