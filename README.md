@@ -1,10 +1,16 @@
-#### Achievements
-[![SQAaaS badge](https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_bronze.png)](https://eu.badgr.com/public/assertions/bw3v-fVCR6eJoMjwG11afw "SQAaaS bronze badge achieved")
+# FALL3D model
 
 ---
-<img src="logo.png" width="220">
 
-## What is FALL3D
+#### Achievements
+
+[comment]: # [![SQAaaS badge](https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_gold.png)](https://api.eu.badgr.io/public/assertions/8Jmq4lBSTPCIyT3nJtnC2w "SQAaaS gold badge achieved")
+
+[![SQAaaS badge shields.io](https://img.shields.io/badge/sqaaas%20software-gold-yellow)](https://api.eu.badgr.io/public/assertions/8Jmq4lBSTPCIyT3nJtnC2w "SQAaaS gold badge achieved")
+
+<img src="docs/images/logo.png" width="220">
+
+## Overview
 FALL3D is a 3D model for atmospheric passive transport and deposition of 
 particles, aerosols, and radionuclides.
 The model, originally developed for inert volcanic particles (tephra), has a 
