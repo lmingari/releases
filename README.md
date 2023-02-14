@@ -2,10 +2,6 @@
 
 ---
 
-#### Achievements
-
-[comment]: # [![SQAaaS badge](https://github.com/EOSC-synergy/SQAaaS/raw/master/badges/badges_150x116/badge_software_gold.png)](https://api.eu.badgr.io/public/assertions/8Jmq4lBSTPCIyT3nJtnC2w "SQAaaS gold badge achieved")
-
 [![SQAaaS badge shields.io](https://img.shields.io/badge/sqaaas%20software-gold-yellow)](https://api.eu.badgr.io/public/assertions/8Jmq4lBSTPCIyT3nJtnC2w "SQAaaS gold badge achieved")
 
 <img src="docs/images/logo.png" width="220">
